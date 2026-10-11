@@ -1,19 +1,33 @@
 package com.pulseos.system;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class FoundationSecurityConfiguration {
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            @Value("${pulseos.auth.enabled:false}") boolean authEnabled) throws Exception {
+        http
+            // Browser cookies are handled by the Next.js BFF, not sent to this bearer-only API.
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/actuator/health", "/api/v1/system/status").permitAll()
-                .anyRequest().denyAll()
-            )
-            .build();
+                .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
+                .anyRequest().denyAll());
+        if (authEnabled) {
+            http.oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
+        }
+        return http.build();
     }
 }

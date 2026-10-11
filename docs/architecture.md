@@ -1,17 +1,21 @@
-# PulseOS architecture
+# Architecture
 
 ```text
-Browser → Next.js App Router (port 3000)
-               │ server-side request
-               ▼
-           Spring Boot API (internal port 8080)
-               │
-               ▼
-        PostgreSQL (internal port 5432)
+Browser → Next.js app (public)
+             │ server-side API calls
+             ▼
+           Spring Boot API → PostgreSQL
 ```
 
-This repository uses separate app and API folders to keep React rendering isolated from the clinical domain.
+## Session flow (when explicitly enabled)
+1. User submits credentials from `/login` to the **Next.js route handler** at `POST /api/auth/login`.
+2. Next.js calls `POST /api/v1/auth/login` on the Spring Boot service without exposing backend credentials to client-side JS.
+3. Spring Security validates the explicit BCrypt staff password hash and issues an HS256 JWT for 15 minutes.
+4. Next.js stores the token in an HttpOnly, Secure cookie. It is not written to local storage.
+5. Every server render of `/` verifies the JWT via `GET /api/v1/auth/me`. Invalid or missing sessions redirect to `/login`.
+6. `POST /api/auth/logout` clears the browser cookie.
 
-**Stage 01:** web layout, API connectivity check, infrastructure and CI. No personal health data stored.
+No API endpoints for actual patient data exist yet. All clinical panels show hardcoded synthetic examples. A single account is provisioned through environment configuration for an instructional demonstration; this is not a multi-user identity system.
 
-**Planned:** a Spring Security authentication layer, API authorization, audited patient/appointment/note workflows, typed frontend service utilities, integration tests and monitoring. All planned features must be reviewed before the repository is used with real data.
+## Operations and trust boundaries
+The API is designed to accept bearer authorization, not browser auth cookies. Production environments should restrict API access to trusted networking where available, use TLS, add login throttling, audit trails, a real identity provider, and least-privilege DB credentials before introducing persistent clinical information.

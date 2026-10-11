@@ -22,6 +22,10 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB}
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      PULSEOS_AUTH_ENABLED: ${PULSEOS_AUTH_ENABLED:-false}
+      PULSEOS_AUTH_USERNAME: ${PULSEOS_AUTH_USERNAME:-}
+      PULSEOS_AUTH_PASSWORD_HASH: ${PULSEOS_AUTH_PASSWORD_HASH:-}
+      PULSEOS_AUTH_JWT_SECRET_BASE64: ${PULSEOS_AUTH_JWT_SECRET_BASE64:-}
     depends_on:
       db:
         condition: service_healthy
@@ -38,6 +42,7 @@ services:
     environment:
       API_INTERNAL_URL: http://api:8080
       NODE_ENV: production
+      PULSEOS_AUTH_ENABLED: ${PULSEOS_AUTH_ENABLED:-false}
     ports:
       - "${WEB_PORT:-3000}:3000"
     depends_on:

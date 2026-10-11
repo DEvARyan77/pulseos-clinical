@@ -2,10 +2,11 @@
 import {useMemo,useState} from "react";
 import {Activity,CalendarDays,CheckCircle2,ClipboardList,Clock3,FileText,FlaskConical,HeartPulse,Menu,Pill,Search,ShieldCheck} from "lucide-react";
 import ThemeSwitcher from "./theme-switcher";
+import SignOutButton from "./sign-out-button";
 import {patients,events,earlierVisits,initialTasks} from "@/lib/demo-data";
 type Tab="Overview"|"Notes"|"Orders"|"Results";
 const tabs:Tab[]=["Overview","Notes","Orders","Results"];
-export default function Workspace({apiStatus}:{apiStatus:"connected"|"offline"}){
+export default function Workspace({apiStatus,authEnabled}:{apiStatus:"connected"|"offline";authEnabled:boolean}){
  const [patientId,setPatientId]=useState(patients[0].id);
  const [search,setSearch]=useState("");
  const [filter,setFilter]=useState("All");
@@ -21,7 +22,7 @@ export default function Workspace({apiStatus}:{apiStatus:"connected"|"offline"})
   <header className="topbar">
    <div className="logo"><HeartPulse size={25}/><span>Pulse<b>OS</b></span></div>
    <nav className="topnav" aria-label="Main navigation"><span className="active">Workspace</span><span>Patients</span><span>Appointments</span><span>Care teams</span><span>Reports</span></nav>
-   <div className="topactions"><span className="demo-label"><ShieldCheck size={13}/> SYNTHETIC DEMO</span><ThemeSwitcher/><span className="api-state"><i className={apiStatus==="connected"?"connected":""}/> API {apiStatus}</span><div className="avatar-small" title="Demo clinician">RC</div></div>
+   <div className="topactions"><span className="demo-label"><ShieldCheck size={13}/> SYNTHETIC DEMO</span><ThemeSwitcher/><span className="api-state"><i className={apiStatus==="connected"?"connected":""}/> API {apiStatus}</span><div className="avatar-small" title="Demo clinician">RC</div>{authEnabled && <SignOutButton/>}</div>
   </header>
   <div className="mobile-queue"><button type="button" onClick={()=>setQueueOpen(!queueOpen)} aria-expanded={queueOpen} aria-controls="patient-queue"><Menu size={17}/> Patient queue</button><span>Clinical workspace</span></div>
   <div className="columns">
@@ -58,7 +59,7 @@ export default function Workspace({apiStatus}:{apiStatus:"connected"|"offline"})
     <section className="side-section"><div className="side-title"><h2>Previous visits</h2><span>Examples</span></div><div className="past-visits">{earlierVisits.map(v=><div key={v.date}><span>{v.date}</span><div><strong>{v.name}</strong><small>{v.detail}</small></div></div>)}</div></section>
     <section className="side-section"><div className="side-title"><h2>Visit tasks</h2><span>{tasks.length-pending}/{tasks.length} done</span></div><div className="task-list">{tasks.map(t=><label key={t.id}><input type="checkbox" checked={t.done} onChange={()=>setTasks(old=>old.map(x=>x.id===t.id?{...x,done:!x.done}:x))}/><span className={t.done?"done":""}>{t.name}</span></label>)}</div><p className="footnote">Tasks reset on page reload.</p></section>
     <section className="side-section"><div className="side-title"><h2>Upcoming appointment</h2><CalendarDays size={16}/></div><div className="appointment"><span>06<strong>NOV</strong></span><div><strong>Follow-up consultation</strong><small>9:00 AM · Demo schedule</small></div></div></section>
-    <div className="privacy-note"><ShieldCheck size={16}/> Prototype only. No real patient records, authentication or clinical storage.</div>
+    <div className="privacy-note"><ShieldCheck size={16}/> Prototype records only. No clinical data persistence or audited access yet.</div>
    </aside>
   </div>
  </main>;

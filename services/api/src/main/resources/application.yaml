@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   error:
     include-message: never
 spring:
@@ -21,3 +21,7 @@ management:
   endpoint:
     health:
       show-details: never
+pulseos:
+  auth:
+    # Explicit opt-in; missing config must never create default admin access.
+    enabled: ${PULSEOS_AUTH_ENABLED:false}

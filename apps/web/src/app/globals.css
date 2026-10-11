@@ -7,3 +7,14 @@
 @media(max-width:1050px){.columns{grid-template-columns:minmax(240px,31%) minmax(0,1fr)}.sidebar{grid-column:2;border-left:0;border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.sidebar-tabs,.privacy-note{grid-column:1/-1}.topnav span:nth-child(n+3){display:none}}
 @media(max-width:680px){.topbar{height:61px;padding:0 13px}.topnav,.api-state{display:none}.topactions{gap:7px}.logo{font-size:20px}.themes button{padding:6px}.mobile-queue{display:flex;justify-content:space-between;align-items:center;padding:11px 15px;border-bottom:1px solid var(--line);background:var(--soft);color:var(--muted);font-size:11px}.mobile-queue button{display:flex;gap:7px;align-items:center;padding:9px;background:var(--surface);color:var(--text);border:1px solid var(--line);border-radius:7px}.columns{display:block}.queue{display:none}.queue.open{display:flex;border-bottom:1px solid var(--line)}.chart{padding:22px 15px}.chart-heading{flex-wrap:wrap}.room-indicator{width:100%;text-align:left;margin-left:0}.overview-grid{gap:9px}.sidebar{display:block}.chart-tabs{gap:18px}}
 @media(max-width:440px){.overview-grid{grid-template-columns:1fr}.avatar-small{display:none}}
+
+.auth-form{display:flex;flex-direction:column;gap:10px;margin-top:28px}
+.auth-form label{font-size:12px;font-weight:700;margin-top:8px}
+.auth-form input{padding:12px 13px;border-radius:9px;border:1px solid var(--line);background:var(--soft);color:var(--text);min-height:44px}
+.auth-form input:focus-visible{outline:2px solid var(--teal);outline-offset:2px}
+.auth-submit{width:100%;margin-top:14px;border:0;border-radius:9px;padding:13px;font-weight:700;background:var(--teal);color:var(--header);min-height:45px}
+.auth-submit:disabled{opacity:.6;cursor:wait}
+.auth-form .auth-error{color:#c65b67;font-size:12px;line-height:1.5}
+.signout{border:1px solid #5a6f7b;border-radius:8px;background:transparent;color:var(--header-text);padding:7px 8px;display:flex;align-items:center;gap:6px;font-size:11px;white-space:nowrap}
+.signout:hover{background:#324d59}
+@media(max-width:1350px){.signout span{display:none}}
