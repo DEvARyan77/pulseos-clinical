@@ -41,3 +41,14 @@ Previously, `/login` redirected away unless auth was enabled. This revision alwa
 
 ## Still required for production use
 Login throttling, MFA, staff invitation lifecycle, session revocation, email verification, audit trails, fine-grained RBAC, trusted hosting, vulnerability testing, clinical validation and all relevant privacy/regulatory reviews.
+
+## Troubleshooting Render login/signup
+
+- **Browser error about invalid `pattern`**: the username input no longer uses the problematic HTML pattern; the client and API validate allowed usernames in JavaScript/Java respectively.
+- **`/api/auth/login` or `/api/auth/register` returns 503**: Next.js could not reach the API or received a backend failure. First open your deployed API's `/actuator/health` endpoint and ensure it returns `{"status":"UP"}`. On the free plan, a Java service may take considerable time to wake up after inactivity. The server-side proxy now permits up to 90 seconds and returns a clearer error message.
+- **Registration returns 403**: confirm enrollment is enabled on both services and the invitation code is valid. Never publish the invitation code.
+- **Login returns 401**: your username or password is invalid. First create an invited staff account using signup.
+- **The page still uses the previous behavior**: check the latest Render deploy for both services, because a pushed GitHub commit does not guarantee the deployment is live.
+- **`Unchecked runtime.lastError`**: commonly emitted by browser extensions, independent of the app's HTTP response. Use an extension-free window to isolate it if needed.
+
+For a faster staff demo, keep the API healthy before attempting first sign-in; always avoid real patient data.

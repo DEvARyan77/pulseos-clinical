@@ -8,8 +8,14 @@ export async function POST(request: NextRequest) {
   if (!authEnabled) return NextResponse.json({ error: "Staff sign-in is not enabled" }, { status: 503 });
 
   const origin = request.headers.get("origin");
-  if (origin && new URL(origin).host !== request.headers.get("host")) {
-    return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
+  if (origin) {
+    try {
+      if (new URL(origin).host !== request.headers.get("host")) {
+        return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
+      }
+    } catch {
+      return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
+    }
   }
 
   let credentials: unknown;
@@ -30,16 +36,25 @@ export async function POST(request: NextRequest) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username: body.username, password: body.password }),
       cache: "no-store",
-      signal: AbortSignal.timeout(8000),
+      // Render free instances may take substantially longer than 8 seconds to wake.
+      signal: AbortSignal.timeout(90000),
     });
-  } catch {
-    return NextResponse.json({ error: "Sign-in service unavailable" }, { status: 503 });
+  } catch (error) {
+    console.error("PulseOS authentication upstream error:", error instanceof Error ? error.name : "unknown");
+    return NextResponse.json({
+      error: "Authentication server is unreachable or waking up. Check the API health endpoint and retry.",
+    }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 
   if (!apiResponse.ok) {
     return NextResponse.json(
-      { error: apiResponse.status === 401 ? "Invalid username or password" : "Sign-in failed" },
-      { status: apiResponse.status === 401 ? 401 : 503 }
+      { error: apiResponse.status === 401
+          ? "Invalid username or password"
+          : apiResponse.status === 429
+            ? "Too many sign-in attempts. Try again later."
+            : "Authentication API returned an error. Verify the backend is healthy and retry." },
+      { status: apiResponse.status === 401 ? 401 : apiResponse.status === 429 ? 429 : 503,
+        headers: { "Cache-Control": "no-store" } }
     );
   }
   let payload: { accessToken?: string; expiresIn?: number };

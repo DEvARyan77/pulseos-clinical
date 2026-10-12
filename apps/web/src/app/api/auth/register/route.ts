@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
         invitationCode: data.invitationCode,
       }),
       cache: "no-store",
-      signal: AbortSignal.timeout(8000),
+      // Allow a Render free backend to wake before reporting it unavailable.
+      signal: AbortSignal.timeout(90000),
     });
     if (upstream.status === 201) {
       return NextResponse.json({ message: "Account created. Sign in to continue." }, {
@@ -52,9 +53,14 @@ export async function POST(request: NextRequest) {
     }
     const error = upstream.status === 403 ? "Registration unavailable or invitation invalid" :
                   upstream.status === 409 ? "Username or email already in use" :
-                  upstream.status === 400 ? "Check the required fields" : "Registration failed";
-    return NextResponse.json({ error }, { status: [400,403,409].includes(upstream.status) ? upstream.status : 503 });
-  } catch {
-    return NextResponse.json({ error: "Registration service unavailable" }, { status: 503 });
+                  upstream.status === 400 ? "Check the required fields" :
+                  upstream.status === 429 ? "Too many requests. Try again later." :
+                  "Registration API returned an error. Verify the backend is healthy and retry.";
+    return NextResponse.json({ error }, { status: [400,403,409,429].includes(upstream.status) ? upstream.status : 503 });
+  } catch (error) {
+    console.error("PulseOS registration upstream error:", error instanceof Error ? error.name : "unknown");
+    return NextResponse.json({
+      error: "Registration server is unreachable or waking up. Check the API health endpoint and retry.",
+    }, { status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }

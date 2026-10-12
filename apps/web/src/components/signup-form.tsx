@@ -15,6 +15,10 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("");
+    if (!/^[A-Za-z][A-Za-z0-9_.-]{2,39}$/.test(username)) {
+      setStatus("Username must be 3–40 characters, start with a letter, and contain only letters, numbers, dots, underscores or hyphens.");
+      return;
+    }
     if (!enabled) {
       setStatus("Staff registration is currently closed. Enable authentication and invitation-only registration on both Render services.");
       return;
@@ -47,7 +51,7 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
       <label htmlFor="signup-username">Staff username</label>
       <input id="signup-username" autoComplete="username" value={username}
         onChange={event => setUsername(event.target.value)}
-        minLength={3} maxLength={40} pattern="[a-zA-Z][a-zA-Z0-9_.-]{2,39}" required />
+        minLength={3} maxLength={40} required />
       <label htmlFor="signup-email">Work email</label>
       <input id="signup-email" type="email" autoComplete="email" value={email}
         onChange={event => setEmail(event.target.value)} maxLength={254} required />
