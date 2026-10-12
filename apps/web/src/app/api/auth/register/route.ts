@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
     const error = upstream.status === 409 ? "Username or email already registered or unavailable" :
                   upstream.status === 429 ? "Please wait before requesting another code." :
                   upstream.status === 403 ? "Registration is closed." :
-                  upstream.status === 400 ? "Check the required fields." :
+                  upstream.status === 400 ? "Check the username, email and password (8–128 characters)." :
                   upstream.status === 503 ? "Verification emails are not connected on this deployment. The administrator must configure the Gmail HTTPS relay or an email provider." :
-                  "Registration failed. Please try again.";
+                  "The registration API returned an unexpected error. Check the backend deployment and logs.";
     return NextResponse.json({ error },
       { status: [400,403,409,429].includes(upstream.status) ? upstream.status : 503,
         headers: { "Cache-Control": "no-store" } });
