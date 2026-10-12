@@ -63,4 +63,20 @@ class RegistrationControllerTest {
         assertThat(row.getAttempts()).isEqualTo(1);
         verify(accounts, never()).saveAndFlush(any());
     }
+    @Test
+    void requiresEightCharactersForNewPasswords() {
+        try (var factory = jakarta.validation.Validation.buildDefaultValidatorFactory()) {
+            var validator = factory.getValidator();
+            var valid = new RegistrationController.RegisterRequest(
+                "testuser", "testuser@example.test", "12345678");
+            var invalid = new RegistrationController.RegisterRequest(
+                "testuser", "testuser@example.test", "1234567");
+
+            assertThat(validator.validate(valid)).isEmpty();
+            assertThat(validator.validate(invalid))
+                .anySatisfy(violation -> assertThat(violation.getPropertyPath().toString())
+                    .isEqualTo("password"));
+        }
+    }
+
 }

@@ -48,7 +48,7 @@ public class RegistrationController {
     public record RegisterRequest(
         @NotBlank @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9_.-]{2,39}$") String username,
         @NotBlank @Email @Size(max = 254) String email,
-        @NotBlank @Size(min = 12, max = 128) String password
+        @NotBlank @Size(min = 8, max = 128) String password
     ) {}
     public record VerifyRequest(
         @NotBlank @Email String email,

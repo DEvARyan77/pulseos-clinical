@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordField from "./password-field";
 
 export default function LoginForm({ enabled }: { enabled: boolean }) {
   const [username, setUsername] = useState("");
@@ -47,8 +48,7 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
         onChange={(e) => setUsername(e.target.value)} minLength={1} maxLength={254}
         autoComplete="username" required />
       <label htmlFor="staff-password">Password</label>
-      <input id="staff-password" name="password" type="password" value={password}
-        onChange={(e) => setPassword(e.target.value)}
+      <PasswordField id="staff-password" value={password} onChange={setPassword}
         minLength={1} maxLength={256} autoComplete="current-password" required />
       {error && <p className="auth-error" role="alert">{error}</p>}
       <button type="submit" disabled={pending} className="auth-submit">

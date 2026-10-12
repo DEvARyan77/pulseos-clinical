@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import PasswordField from "./password-field";
 
 export default function SignupForm({ enabled }: { enabled: boolean }) {
   const router = useRouter();
@@ -109,9 +110,9 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
       <label htmlFor="signup-email">Email address</label>
       <input id="signup-email" type="email" autoComplete="email" value={email}
         onChange={event => setEmail(event.target.value)} maxLength={254} required />
-      <label htmlFor="signup-password">Password (at least 12 characters)</label>
-      <input id="signup-password" type="password" autoComplete="new-password" value={password}
-        onChange={event => setPassword(event.target.value)} minLength={12} maxLength={128} required />
+      <label htmlFor="signup-password">Password (at least 8 characters)</label>
+      <PasswordField id="signup-password" value={password} onChange={setPassword}
+        autoComplete="new-password" minLength={8} maxLength={128} required />
       <p className="auth-description">We’ll email you a code to verify your address before activating your account.</p>
       {error && <p className="auth-error" role="alert">{error}</p>}
       <button type="submit" className="auth-submit" disabled={pending}>

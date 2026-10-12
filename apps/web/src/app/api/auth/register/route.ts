@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
   const data = value as Record<string, unknown>;
   if (typeof data.username !== "string" || !/^[a-zA-Z][a-zA-Z0-9_.-]{2,39}$/.test(data.username) ||
       typeof data.email !== "string" || data.email.length > 254 ||
-      typeof data.password !== "string" || data.password.length < 12 || data.password.length > 128) {
+      typeof data.password !== "string" || data.password.length < 8 || data.password.length > 128) {
     return NextResponse.json({ error: "Check the required fields" }, { status: 400 });
   }
   try {

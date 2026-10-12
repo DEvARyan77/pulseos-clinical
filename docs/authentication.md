@@ -4,7 +4,7 @@ PulseOS is a portfolio application. Store only fictional patient data.
 
 ## Registration workflow
 
-1. A visitor opens `/signup` and enters a username, email, and a password of at least 12 characters.
+1. A visitor opens `/signup` and enters a username, email, and a password of at least 8 characters.
 2. Backend validates the input, hashes the password with BCrypt, and generates a random six-digit verification code.
 3. The pending account and HMAC-hashed code are saved in PostgreSQL. The raw code is not stored or logged.
 4. The code is emailed to the address supplied. If sending fails, pending registration rolls back and the user sees an error.
