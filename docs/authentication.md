@@ -42,6 +42,13 @@ If outbound SMTP is supported:
 
 A secret pasted in a conversation should be treated as exposed and rotated. The old app password is intentionally not committed or configured on the SMTP-blocked free service.
 
+
+### Render cold-start behavior
+
+On free Render instances, Spring Boot may take over two minutes to start after sleeping. The signup and login forms now ping the API health endpoint on load and wait for it to become ready before sending passwords or email verification requests. This avoids wasting a 90-second POST timeout during API startup. A progress message appears while the server starts, with a bounded wait and an explicit error if it never becomes healthy.
+
+A ready API **does not mean that email delivery is configured**. If the request then returns an email-delivery error, set up an SMTP connection that works in your hosting environment, Google Apps Script HTTPS relay, or an HTTPS email provider. Never use patient information for registration tests.
+
 ## Troubleshooting
 
 - "Email delivery is not configured" (503): configure a supported email provider and valid sender credentials.

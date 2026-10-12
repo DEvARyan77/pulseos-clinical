@@ -1,25 +1,30 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import PasswordField from "./password-field";
+import { waitForAuthApi, wakeAuthApi } from "@/lib/auth-readiness";
 
 export default function LoginForm({ enabled }: { enabled: boolean }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("");
+  useEffect(() => { if (enabled) wakeAuthApi(); }, [enabled]);
   const router = useRouter();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    setConnectionStatus("");
     if (!enabled) {
       setError("Staff login is not configured on this deployment. The administrator must enable authentication on both Render services.");
       return;
     }
     setPending(true);
     try {
+      await waitForAuthApi(setConnectionStatus);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -28,14 +33,16 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
       });
       if (!response.ok) {
         const data = await response.json() as { error?: string };
+        setConnectionStatus("");
         setError(data.error ?? "Sign-in failed");
         return;
       }
       setPassword("");
       router.replace("/");
       router.refresh();
-    } catch {
-      setError("Cannot reach the sign-in service");
+    } catch (cause) {
+      setConnectionStatus("");
+      setError(cause instanceof Error ? cause.message : "Cannot reach the sign-in service");
     } finally {
       setPending(false);
     }
@@ -50,9 +57,10 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
       <label htmlFor="staff-password">Password</label>
       <PasswordField id="staff-password" value={password} onChange={setPassword}
         minLength={1} maxLength={256} autoComplete="current-password" required />
+      {connectionStatus && <p className="auth-success" role="status">{connectionStatus}</p>}
       {error && <p className="auth-error" role="alert">{error}</p>}
       <button type="submit" disabled={pending} className="auth-submit">
-        {pending ? "Signing in…" : "Sign in"}
+        {pending ? "Connecting and signing in…" : "Sign in"}
       </button>
     </form>
   );
