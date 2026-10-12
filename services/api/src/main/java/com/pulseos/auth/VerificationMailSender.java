@@ -47,6 +47,34 @@ public class VerificationMailSender {
             .connectTimeout(Duration.ofSeconds(10)).build();
     }
 
+
+    /**
+     * Configuration check only. Does not send email, reveal credentials,
+     * or promise the remote provider is currently reachable.
+     */
+    public boolean isConfigured() {
+        if (from.isBlank()) return false;
+        return switch (provider.toLowerCase(java.util.Locale.ROOT)) {
+            case "smtp" -> smtp.getIfAvailable() != null;
+            case "resend" -> !resendApiKey.isBlank();
+            case "google-script" -> googleScriptKey.length() >= 48 && isGoogleScriptEndpoint();
+            default -> false;
+        };
+    }
+
+    private boolean isGoogleScriptEndpoint() {
+        try {
+            URI endpoint = URI.create(googleScriptUrl);
+            return "https".equals(endpoint.getScheme())
+                && "script.google.com".equals(endpoint.getHost())
+                && endpoint.getPort() == -1
+                && endpoint.getRawQuery() == null
+                && endpoint.getPath().matches("/macros/s/[^/]+/exec");
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
     public void send(String destination, String code) {
         if (from.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Verification email is not configured");

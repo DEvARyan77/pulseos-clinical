@@ -42,12 +42,16 @@ export async function POST(request: NextRequest) {
         status: 202, headers: { "Cache-Control": "no-store" }
       });
     }
+    if (upstream.status >= 500) {
+      console.error("Registration upstream returned HTTP", upstream.status);
+    }
     const error = upstream.status === 409 ? "Username or email already registered or unavailable" :
                   upstream.status === 429 ? "Please wait before requesting another code." :
                   upstream.status === 403 ? "Registration is closed." :
                   upstream.status === 400 ? "Check the username, email and password (8–128 characters)." :
-                  upstream.status === 503 ? "Verification emails are not connected on this deployment. The administrator must configure the Gmail HTTPS relay or an email provider." :
-                  "The registration API returned an unexpected error. Check the backend deployment and logs.";
+                  upstream.status === 503 ? "Email delivery is not configured or unavailable on the PulseOS API." :
+                  upstream.status === 502 || upstream.status === 504 ? "The API gateway is still starting or unreachable. Retry after the API is healthy." :
+                  "The API encountered a server error. Check Render API logs.";
     return NextResponse.json({ error },
       { status: [400,403,409,429].includes(upstream.status) ? upstream.status : 503,
         headers: { "Cache-Control": "no-store" } });

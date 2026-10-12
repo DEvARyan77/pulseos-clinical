@@ -20,6 +20,7 @@ public class FoundationSecurityConfiguration {
       .authorizeHttpRequests(auth->auth
         .requestMatchers("/actuator/health","/api/v1/system/status").permitAll()
         .requestMatchers(HttpMethod.POST,"/api/v1/auth/login","/api/v1/auth/register","/api/v1/auth/verify").permitAll()
+        .requestMatchers(HttpMethod.GET,"/api/v1/auth/registration-status").permitAll()
         .requestMatchers(HttpMethod.GET,"/api/v1/auth/me").authenticated()
         .requestMatchers("/api/v1/demo-appointments","/api/v1/demo-appointments/**").authenticated()
         .requestMatchers("/api/v1/patients","/api/v1/patients/**").authenticated()

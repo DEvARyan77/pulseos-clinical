@@ -41,4 +41,19 @@ class VerificationMailSenderTest {
         assertThatThrownBy(() -> sender.send("recipient@example.test", "123456"))
             .isInstanceOf(ResponseStatusException.class);
     }
+    @Test
+    void configurationCheckFailsClosedForDisabledProvider() {
+        var sender = new VerificationMailSender("disabled", "sender@example.test",
+            "", "", "", smtp);
+        org.assertj.core.api.Assertions.assertThat(sender.isConfigured()).isFalse();
+    }
+
+    @Test
+    void configurationCheckRejectsMissingGoogleRelaySettings() {
+        var sender = new VerificationMailSender("google-script", "sender@example.test",
+            "", "https://attacker.example.test/macros/s/1234/exec",
+            "a".repeat(64), smtp);
+        org.assertj.core.api.Assertions.assertThat(sender.isConfigured()).isFalse();
+    }
+
 }

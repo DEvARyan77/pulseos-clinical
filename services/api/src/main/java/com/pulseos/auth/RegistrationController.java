@@ -67,11 +67,28 @@ public class RegistrationController {
         }
     }
 
+
+    /**
+     * Public configuration state only; contains no provider key, mailbox, or token.
+     * Indicates credentials are present, not that delivery has been tested.
+     */
+    @GetMapping("/registration-status")
+    public ResponseEntity<Map<String, Boolean>> registrationStatus() {
+        return ResponseEntity.ok().header("Cache-Control", "no-store").body(Map.of(
+            "registrationEnabled", registrationEnabled,
+            "emailConfigured", mailer.isConfigured()));
+    }
+
     @PostMapping("/register")
     @Transactional
     public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterRequest request) {
         if (!registrationEnabled) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Registration is closed"));
+        }
+        if (!mailer.isConfigured()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header("Cache-Control", "no-store")
+                .body(Map.of("error", "Verification email delivery is not configured on the server"));
         }
         String username = request.username().strip().toLowerCase(Locale.ROOT);
         String email = request.email().strip().toLowerCase(Locale.ROOT);

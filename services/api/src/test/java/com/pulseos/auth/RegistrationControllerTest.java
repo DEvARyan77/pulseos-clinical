@@ -38,6 +38,7 @@ class RegistrationControllerTest {
     @Test
     void signupOnlyCreatesPendingRecordAndEmailsCode() {
         when(passwords.encode("long-sample-password")).thenReturn("BCrypt-test-hash");
+        when(mailer.isConfigured()).thenReturn(true);
         var result = controller(true).register(registration());
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
         verify(accounts, never()).saveAndFlush(any());
@@ -77,6 +78,15 @@ class RegistrationControllerTest {
                 .anySatisfy(violation -> assertThat(violation.getPropertyPath().toString())
                     .isEqualTo("password"));
         }
+    }
+
+    @Test
+    void registrationFailsSafelyWhenEmailProviderIsMissing() {
+        assertThat(controller(true).register(registration()).getStatusCode())
+            .isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
+        verifyNoInteractions(passwords);
+        verify(accounts, never()).saveAndFlush(any());
+        verify(pending, never()).saveAndFlush(any());
     }
 
 }

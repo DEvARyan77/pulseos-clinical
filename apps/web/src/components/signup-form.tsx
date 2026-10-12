@@ -31,7 +31,7 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
     }
     setPending(true);
     try {
-      await waitForAuthApi(setFeedback);
+      await waitForAuthApi(setFeedback, true);
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
