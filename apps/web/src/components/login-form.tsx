@@ -22,7 +22,7 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: username.trim(), password }),
         cache: "no-store",
       });
       if (!response.ok) {
@@ -42,9 +42,9 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
 
   return (
     <form onSubmit={submit} className="auth-form">
-      <label htmlFor="staff-user">Staff username</label>
+      <label htmlFor="staff-user">Staff username or email</label>
       <input id="staff-user" name="username" value={username}
-        onChange={(e) => setUsername(e.target.value)} minLength={1} maxLength={80}
+        onChange={(e) => setUsername(e.target.value)} minLength={1} maxLength={254}
         autoComplete="username" required />
       <label htmlFor="staff-password">Password</label>
       <input id="staff-password" name="password" type="password" value={password}

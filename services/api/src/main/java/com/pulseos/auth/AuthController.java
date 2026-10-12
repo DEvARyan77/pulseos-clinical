@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.Locale;
+import org.springframework.security.core.Authentication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,16 +43,17 @@ public class AuthController {
         this.jwtEncoder = jwtEncoder;
     }
 
-    public record LoginRequest(@NotBlank @Size(max = 80) String username,
+    public record LoginRequest(@NotBlank @Size(max = 254) String username,
                                @NotBlank @Size(max = 256) String password) { }
 
     public record LoginResponse(String accessToken, String tokenType, int expiresIn) { }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
+        Authentication verified;
         try {
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
-                request.username(), request.password()));
+            verified = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(
+                request.username().strip().toLowerCase(Locale.ROOT), request.password()));
         } catch (AuthenticationException error) {
             // Do not reveal whether the user exists.
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
@@ -59,7 +62,7 @@ public class AuthController {
         Instant now = Instant.now();
         JwtClaimsSet claims = JwtClaimsSet.builder()
             .issuer("pulseos-api")
-            .subject(request.username())
+            .subject(verified.getName())
             .issuedAt(now)
             .expiresAt(now.plus(TOKEN_TTL_SECONDS, ChronoUnit.SECONDS))
             .claim("roles", List.of("CLINICIAN"))

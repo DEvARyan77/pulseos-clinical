@@ -14,7 +14,7 @@ export default function LoginPage() {
         <div className={styles.wordmark}>Pulse<span>OS</span></div>
         <div className={styles.kicker}>CLINICIAN PORTAL</div>
         <h1>Welcome back.</h1>
-        <p>Enter your staff username and password.</p>
+        <p>Enter your staff username or email and your password. Usernames are case-insensitive; passwords are case-sensitive.</p>
         {!enabled && <div className={styles.setupNotice} role="status">
           Authentication is not enabled on this deployment. You can try the form,
           but sign-in will not work until the Render environment is configured.

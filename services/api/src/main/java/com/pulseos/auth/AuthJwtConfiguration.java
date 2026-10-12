@@ -1,6 +1,8 @@
 package com.pulseos.auth;
 
 import java.util.Base64;
+import java.util.Locale;
+import java.util.Optional;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,7 +11,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -64,17 +65,27 @@ public class AuthJwtConfiguration {
             @Value("${PULSEOS_AUTH_PASSWORD_HASH:}") String legacyHash) {
         // The optional legacy staff identity makes previous deployments compatible.
         // Newly registered users are persisted in PostgreSQL.
-        return username -> accounts.findByUsername(username).map(account -> User
-            .withUsername(account.getUsername()).password(account.getPasswordHash())
-            .roles(account.getRole()).disabled(!account.isEnabled()).build())
-            .orElseGet(() -> {
-                if (!legacyUsername.isBlank() && username.equals(legacyUsername)
-                    && legacyHash.matches("^\\$2[aby]\\$\\d{2}\\$.{53}$")) {
+        return submittedIdentity -> {
+            String normalized = submittedIdentity.strip().toLowerCase(Locale.ROOT);
+            Optional<StaffAccount> matching = accounts.findByUsername(normalized);
+            if (matching.isEmpty() && normalized.contains("@")) {
+                matching = accounts.findByEmail(normalized);
+            }
+            return matching.map(account -> User.withUsername(account.getUsername())
+                .password(account.getPasswordHash())
+                .roles(account.getRole())
+                .disabled(!account.isEnabled())
+                .build()).orElseGet(() -> {
+                if (!legacyUsername.isBlank() &&
+                    (submittedIdentity.strip().equals(legacyUsername)
+                      || normalized.equals(legacyUsername.toLowerCase(Locale.ROOT))) &&
+                    legacyHash.matches("^\\$2[aby]\\$\\d{2}\\$.{53}$")) {
                     return User.withUsername(legacyUsername).password(legacyHash)
                         .roles("CLINICIAN").build();
                 }
                 throw new UsernameNotFoundException("Unknown staff account");
             });
+        };
     }
 
     @Bean

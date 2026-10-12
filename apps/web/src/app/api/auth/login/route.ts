@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   }
   const body = credentials as Record<string, unknown> | null;
   if (!body || typeof body.username !== "string" || typeof body.password !== "string" ||
-      body.username.length > 80 || body.password.length > 256 ||
+      body.username.length > 254 || body.password.length > 256 ||
       !body.username || !body.password) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }

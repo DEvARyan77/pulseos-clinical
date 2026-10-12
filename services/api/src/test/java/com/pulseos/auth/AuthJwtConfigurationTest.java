@@ -35,4 +35,37 @@ class AuthJwtConfigurationTest {
             JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
         assertThat(decoder.decode(token).getSubject()).isEqualTo("example-clinician");
     }
+
+    @Test
+    void acceptsMixedCaseUsernameAndReturnsCanonicalIdentity() {
+        var repository = org.mockito.Mockito.mock(StaffAccountRepository.class);
+        var account = org.mockito.Mockito.mock(StaffAccount.class);
+        org.mockito.Mockito.when(account.getUsername()).thenReturn("doctor");
+        org.mockito.Mockito.when(account.getPasswordHash()).thenReturn("hashed-password");
+        org.mockito.Mockito.when(account.getRole()).thenReturn("CLINICIAN");
+        org.mockito.Mockito.when(account.isEnabled()).thenReturn(true);
+        org.mockito.Mockito.when(repository.findByUsername("doctor")).thenReturn(java.util.Optional.of(account));
+
+        var principal = configuration.staffUsers(repository, "", "").loadUserByUsername("  DOCTOR  ");
+        assertThat(principal.getUsername()).isEqualTo("doctor");
+        org.mockito.Mockito.verify(repository).findByUsername("doctor");
+    }
+
+    @Test
+    void supportsLoginByRegisteredEmail() {
+        var repository = org.mockito.Mockito.mock(StaffAccountRepository.class);
+        var account = org.mockito.Mockito.mock(StaffAccount.class);
+        org.mockito.Mockito.when(account.getUsername()).thenReturn("doctor");
+        org.mockito.Mockito.when(account.getPasswordHash()).thenReturn("hashed-password");
+        org.mockito.Mockito.when(account.getRole()).thenReturn("CLINICIAN");
+        org.mockito.Mockito.when(account.isEnabled()).thenReturn(true);
+        org.mockito.Mockito.when(repository.findByEmail("doctor@example.test"))
+            .thenReturn(java.util.Optional.of(account));
+
+        var principal = configuration.staffUsers(repository, "", "")
+            .loadUserByUsername("DOCTOR@EXAMPLE.TEST");
+        assertThat(principal.getUsername()).isEqualTo("doctor");
+        org.mockito.Mockito.verify(repository).findByEmail("doctor@example.test");
+    }
+
 }
