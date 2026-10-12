@@ -14,14 +14,15 @@ export default function LoginPage() {
         <div className={styles.wordmark}>Pulse<span>OS</span></div>
         <div className={styles.kicker}>CLINICIAN PORTAL</div>
         <h1>Welcome back.</h1>
-        <p>Sign in to your staff account to open the clinical workspace.</p>
+        <p>Enter your staff username and password.</p>
         {!enabled && <div className={styles.setupNotice} role="status">
-          Staff login is not activated on this deployment. The demo dashboard is available without an account.
+          Authentication is not enabled on this deployment. You can try the form,
+          but sign-in will not work until the Render environment is configured.
         </div>}
         <LoginForm enabled={enabled} />
         <p className={styles.formLink}>New here? <Link href="/signup">Create an account</Link></p>
-        {!enabled && <p className={styles.formLink}><Link href="/">Explore the demo dashboard →</Link></p>}
-        <div className={styles.notice}>Portfolio demo with synthetic records · Not for real patient information.</div>
+        {!enabled && <p className={styles.formLink}><Link href="/">Explore the synthetic dashboard →</Link></p>}
+        <div className={styles.notice}>Only fictional records. Not authorized for real patient data.</div>
       </section>
     </main>
   );

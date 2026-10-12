@@ -9,12 +9,15 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const router = useRouter();
-  // Server-rendered login page remains usable without client-only query state.
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!enabled) return;
-    setPending(true);
     setError("");
+    if (!enabled) {
+      setError("Staff login is not configured on this deployment. The administrator must enable authentication on both Render services.");
+      return;
+    }
+    setPending(true);
     try {
       const response = await fetch("/api/auth/login", {
         method: "POST",
@@ -42,13 +45,13 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
       <label htmlFor="staff-user">Staff username</label>
       <input id="staff-user" name="username" value={username}
         onChange={(e) => setUsername(e.target.value)} minLength={1} maxLength={80}
-        autoComplete="username" required disabled={!enabled} />
+        autoComplete="username" required />
       <label htmlFor="staff-password">Password</label>
       <input id="staff-password" name="password" type="password" value={password}
         onChange={(e) => setPassword(e.target.value)}
-        minLength={1} maxLength={256} autoComplete="current-password" required disabled={!enabled} />
+        minLength={1} maxLength={256} autoComplete="current-password" required />
       {error && <p className="auth-error" role="alert">{error}</p>}
-      <button type="submit" disabled={!enabled || pending} className="auth-submit">
+      <button type="submit" disabled={pending} className="auth-submit">
         {pending ? "Signing in…" : "Sign in"}
       </button>
     </form>

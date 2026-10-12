@@ -15,13 +15,14 @@ export default function SignupPage() {
         <div className={styles.wordmark}>Pulse<span>OS</span></div>
         <div className={styles.kicker}>STAFF ENROLLMENT</div>
         <h1>Create your account.</h1>
-        <p>Register as an invited demo clinician to access the medical workspace.</p>
-        {!enabled && <p className={styles.notice} role="status">
-          Registration is currently disabled on this deployment. Ask the project administrator for an invitation.
+        <p>Create an invited staff account to access the workspace.</p>
+        {!enabled && <p className={styles.setupNotice} role="status">
+          Account registration is not enabled on this deployment. The form is visible,
+          but saving an account requires an administrator to enable invitation-only registration.
         </p>}
         <SignupForm enabled={enabled} />
         <p className={styles.formLink}>Already have an account? <Link href="/login">Sign in</Link></p>
-        <div className={styles.notice}>Demo application only · Do not enter real patient information.</div>
+        <div className={styles.notice}>Portfolio environment — fictional patient records only.</div>
       </section>
     </main>
   );

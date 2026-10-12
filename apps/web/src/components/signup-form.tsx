@@ -14,9 +14,12 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!enabled) return;
-    setPending(true);
     setStatus("");
+    if (!enabled) {
+      setStatus("Staff registration is currently closed. Enable authentication and invitation-only registration on both Render services.");
+      return;
+    }
+    setPending(true);
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -44,20 +47,18 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
       <label htmlFor="signup-username">Staff username</label>
       <input id="signup-username" autoComplete="username" value={username}
         onChange={event => setUsername(event.target.value)}
-        minLength={3} maxLength={40} pattern="[a-zA-Z][a-zA-Z0-9_.-]{2,39}" required disabled={!enabled} />
+        minLength={3} maxLength={40} pattern="[a-zA-Z][a-zA-Z0-9_.-]{2,39}" required />
       <label htmlFor="signup-email">Work email</label>
       <input id="signup-email" type="email" autoComplete="email" value={email}
-        onChange={event => setEmail(event.target.value)} maxLength={254} required disabled={!enabled} />
+        onChange={event => setEmail(event.target.value)} maxLength={254} required />
       <label htmlFor="signup-password">Password (at least 12 characters)</label>
       <input id="signup-password" type="password" autoComplete="new-password" value={password}
-        onChange={event => setPassword(event.target.value)} minLength={12} maxLength={128}
-        required disabled={!enabled} />
+        onChange={event => setPassword(event.target.value)} minLength={12} maxLength={128} required />
       <label htmlFor="signup-invite">Staff invitation code</label>
       <input id="signup-invite" type="password" autoComplete="off" value={invitationCode}
-        onChange={event => setInvitationCode(event.target.value)} maxLength={256}
-        required disabled={!enabled} />
+        onChange={event => setInvitationCode(event.target.value)} maxLength={256} required />
       {status && <p className="auth-error" role="alert">{status}</p>}
-      <button type="submit" className="auth-submit" disabled={!enabled || pending}>
+      <button type="submit" className="auth-submit" disabled={pending}>
         {pending ? "Creating account…" : "Create staff account"}
       </button>
     </form>
