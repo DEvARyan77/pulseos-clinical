@@ -23,6 +23,7 @@ public class FoundationSecurityConfiguration {
                 .requestMatchers("/actuator/health", "/api/v1/system/status").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
+                .requestMatchers("/api/v1/demo-appointments", "/api/v1/demo-appointments/**").authenticated()
                 .anyRequest().denyAll());
         if (authEnabled) http.oauth2ResourceServer(oauth -> oauth.jwt(Customizer.withDefaults()));
         return http.build();
