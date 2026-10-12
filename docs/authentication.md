@@ -1,54 +1,49 @@
-# Staff authentication and invitation-only registration
+# Email-verified staff registration
 
-PulseOS uses **synthetic clinical data only**. Real healthcare use requires further engineering and compliance review.
+PulseOS is a portfolio application. Store only fictional patient data.
 
-## Deploying authenticated staff accounts
+## Registration workflow
 
-Backend variables (on Render service `pulseos-api` or Docker API):
-- `PULSEOS_AUTH_ENABLED=true`
-- `PULSEOS_AUTH_JWT_SECRET_BASE64=<a unique 32+-byte random Base64 secret>`
-- `PULSEOS_REGISTRATION_ENABLED=true` (temporary, while enrolling staff)
-- `PULSEOS_REGISTRATION_INVITE_CODE=<a unique private invitation of 24+ characters>`
-- Usual working PostgreSQL datasource variables.
+1. A visitor opens `/signup` and enters a username, email, and a password of at least 12 characters.
+2. Backend validates the input, hashes the password with BCrypt, and generates a random six-digit verification code.
+3. The pending account and HMAC-hashed code are saved in PostgreSQL. The raw code is not stored or logged.
+4. The code is emailed to the address supplied. If sending fails, pending registration rolls back and the user sees an error.
+5. The visitor enters the code in PulseOS. A valid code activates the account and the user can then sign in.
+6. Codes expire in 10 minutes, a new code cannot be requested within 60 seconds, and five incorrect attempts lock the current code.
 
-Frontend variables (Render service `pulseos-web` or Docker web):
-- `PULSEOS_AUTH_ENABLED=true`
-- `PULSEOS_REGISTRATION_ENABLED=true` while you are enrolling accounts
-- `API_INTERNAL_URL` points to the backend API, reachable **from the frontend server**.
+Existing verified staff accounts remain valid. The previous shared invitation-code field and signup requirement have been removed. The old `PULSEOS_REGISTRATION_INVITE_CODE` variable is no longer read by this code.
 
-Generate credentials locally:
+## Enable email sending
 
-```bash
-openssl rand -base64 48  # signing key, copy into backend secret environment
-openssl rand -hex 24     # invitation code, copy into backend secret environment
-```
+### Render Free — HTTPS email API
 
-Start the database-backed backend before testing the frontend. Flyway automatically creates the `staff_accounts` schema.
+Render Free blocks outbound ports 25, 465 and 587. Gmail app passwords authenticate to SMTP, not the Gmail HTTPS API. Configure a transactional HTTPS email provider, for example Resend:
 
-1. Open `/signup`. Fill a username, email, password (minimum 12 characters) and the invitation code.
-2. Successful signup is stored as a BCrypt password hash in PostgreSQL.
-3. Open `/login` and sign in using the new staff username/password.
-4. Next.js sets an HttpOnly cookie with a 15-minute backend-issued JWT and renders the protected workspace.
-5. Disable `PULSEOS_REGISTRATION_ENABLED` on both services after enrollment. Existing accounts can still log in.
+- Sign up with the provider and verify a sender domain.
+- Set backend secrets: `PULSEOS_EMAIL_PROVIDER=resend`, `PULSEOS_EMAIL_FROM=<verified sender address>`, and `PULSEOS_RESEND_API_KEY=<private key>`.
+- Set `PULSEOS_AUTH_ENABLED=true` and `PULSEOS_REGISTRATION_ENABLED=true` on both frontend and backend.
+- Set `API_INTERNAL_URL` on the frontend to the actual backend URL.
 
-If you previously configured `PULSEOS_AUTH_USERNAME` and `PULSEOS_AUTH_PASSWORD_HASH`, the old single staff identity continues to work as a fallback.
+The sender must be verified. No API key means no email, and registration safely fails with an error. Do not put any provider key in GitHub.
 
-**Don't use email addresses or passwords belonging to actual patients.** Invites are shared tokens and not a complete identity-proofing workflow.
+### Local / paid host — Gmail SMTP
 
-## Why the sign-in screens weren't visible before
+If outbound SMTP is supported:
+- `PULSEOS_EMAIL_PROVIDER=smtp`
+- `PULSEOS_EMAIL_FROM=<gmail address>`
+- `PULSEOS_SMTP_HOST=smtp.gmail.com`
+- `PULSEOS_SMTP_PORT=587`
+- `PULSEOS_SMTP_USER=<gmail address>`
+- `PULSEOS_SMTP_PASSWORD=<newly generated app password>`
 
-Previously, `/login` redirected away unless auth was enabled. This revision always renders `/login` and `/signup`; when backend authentication/registration is disabled the form clearly explains why submission is unavailable. The demo dashboard remains available while authentication is disabled.
+A secret pasted in a conversation should be treated as exposed and rotated. The old app password is intentionally not committed or configured on the SMTP-blocked free service.
 
-## Still required for production use
-Login throttling, MFA, staff invitation lifecycle, session revocation, email verification, audit trails, fine-grained RBAC, trusted hosting, vulnerability testing, clinical validation and all relevant privacy/regulatory reviews.
+## Troubleshooting
 
-## Troubleshooting Render login/signup
+- "Email delivery is not configured" (503): configure a supported email provider and valid sender credentials.
+- "Username or email already registered": use login with an existing account instead.
+- "Incorrect or expired code": retry the code from your inbox; if expired, return to the details step to request another.
+- "Too many attempts": wait at least 60 seconds before requesting a fresh code.
+- API health: open your deployed `/actuator/health` endpoint.
 
-- **Browser error about invalid `pattern`**: the username input no longer uses the problematic HTML pattern; the client and API validate allowed usernames in JavaScript/Java respectively.
-- **`/api/auth/login` or `/api/auth/register` returns 503**: Next.js could not reach the API or received a backend failure. First open your deployed API's `/actuator/health` endpoint and ensure it returns `{"status":"UP"}`. On the free plan, a Java service may take considerable time to wake up after inactivity. The server-side proxy now permits up to 90 seconds and returns a clearer error message.
-- **Registration returns 403**: confirm enrollment is enabled on both services and the invitation code is valid. Never publish the invitation code.
-- **Login returns 401**: your username or password is invalid. First create an invited staff account using signup.
-- **The page still uses the previous behavior**: check the latest Render deploy for both services, because a pushed GitHub commit does not guarantee the deployment is live.
-- **`Unchecked runtime.lastError`**: commonly emitted by browser extensions, independent of the app's HTTP response. Use an extension-free window to isolate it if needed.
-
-For a faster staff demo, keep the API healthy before attempting first sign-in; always avoid real patient data.
+Future security work: login and registration IP throttling, managed identity, domain policies, MFA, session revocation, email delivery monitoring and user administration.

@@ -1,57 +1,49 @@
-# PulseOS — Medical Operations Portfolio
+# PulseOS — Clinical Operations Portfolio
 
-PulseOS is a **Next.js 16 + Spring Boot 4.1 + PostgreSQL** clinical workspace demonstration.
+Next.js 16, Spring Boot 4.1, PostgreSQL, JWT authentication, patient records, appointment scheduling, clinical notes and activity history.
 
-> **All clinical data shown by the frontend is fictional. Do not enter real patient information. PulseOS is not a certified EHR or approved clinical application.**
+> **Portfolio / test environment only.** Use fictional patient information, not real patient records. The application is not a certified EHR or approved for real-world healthcare operations.
 
-## Implemented functionality
-- Responsive patient workspace with fictional patient queue, search, filters, records and timeline
-- System-following Light / Dark theme with saved overrides
-- Invitation-restricted staff signup, PostgreSQL/BCrypt credential storage and JWT login/logout
-- **Database-backed demo appointment scheduling:** choose one of seven hardcoded `DEMO-` patients, select an appointment date and visit type, view your saved appointments, and cancel a booking. Appointments belong to the signed-in staff account.
-- Flyway schema migrations for account and demo appointment records
+## Available functionality
 
-## Limitations
-- The seven patient charts are **read-only frontend fixtures**, not synchronized to PostgreSQL.
-- Account enrollment is protected only by a shared invitation code; enable it only while enrolling demo users.
-- No MFA, login rate limiting, revocable sessions, medical billing, clinical auditing, or real clinical workflows.
-- Patient/chart editing, clinical notes, medical orders and actual healthcare compliance are NOT implemented.
+- Responsive light/dark/system themes with **amber/yellow and charcoal** accents
+- Staff account registration using **email verification**: username, email and password → six-digit email code → activate account → login
+- Existing staff accounts continue to work
+- User-scoped patient records, editing, visit notes, timestamps and change history
+- Authenticated PostgreSQL appointment scheduling for patients in the user's test registry
+- Logout and HttpOnly, short-lived JWT session cookie
 
-## Docker quick start
-```bash
-./scripts/init-env.sh
-docker compose up --build
-```
-Open http://localhost:3000, `/login`, `/signup` or `/appointments`.
+## Email delivery configuration
 
-By default, authorization and enrollment are off. The patient workspace is viewable as an unauthenticated synthetic demo; scheduling requires the sign-in feature to be enabled.
+The backend supports `PULSEOS_EMAIL_PROVIDER=resend` for HTTPS delivery (Render Free compatible) or `PULSEOS_EMAIL_PROVIDER=smtp` for hosts where SMTP ports are allowed. **Email verification cannot send mail until a provider is configured**. It fails closed with 503; no account is created if sending fails.
 
-## Enable real demo account functionality on Render or Docker
-Configure **both API and frontend**:
-```
+For **Render Free**, choose an HTTPS provider:
+- `PULSEOS_EMAIL_PROVIDER=resend`
+- `PULSEOS_EMAIL_FROM` = an address on your verified sender domain
+- `PULSEOS_RESEND_API_KEY` = provider API key stored only in Render environment variables
+
+For **paid hosting or local development** using Gmail SMTP:
+- `PULSEOS_EMAIL_PROVIDER=smtp`
+- `PULSEOS_EMAIL_FROM` / `PULSEOS_SMTP_USER` = your Gmail address
+- `PULSEOS_SMTP_HOST=smtp.gmail.com`
+- `PULSEOS_SMTP_PORT=587`
+- `PULSEOS_SMTP_PASSWORD` = new Google app password, stored in environment configuration only
+
+Render **Free** blocks outbound SMTP ports 25/465/587. A Gmail app password does not work with Gmail's HTTPS API. See [email setup](docs/authentication.md).
+
+## Application settings
+
+On both frontend and backend:
+```env
 PULSEOS_AUTH_ENABLED=true
 PULSEOS_REGISTRATION_ENABLED=true
 ```
-Configure **API only**:
-```
-PULSEOS_AUTH_JWT_SECRET_BASE64=<random Base64 secret of 32+ bytes>
-PULSEOS_REGISTRATION_INVITE_CODE=<private invite of at least 24 characters>
-```
+Backend also needs a Base64 random 32+ byte JWT signing key, PostgreSQL environment variables, and configured email delivery. Next.js needs `API_INTERNAL_URL` reachable from the frontend server.
 
-Create unique secrets locally using `openssl rand -base64 48` and `openssl rand -hex 24`. Set working PostgreSQL datasource environment variables on the API and set `API_INTERNAL_URL` on the frontend to a backend URL reachable from its server.
+Open `/signup`, enter details, check your inbox, verify your code, then open `/login`.
 
-1. Redeploy the API and frontend.
-2. Sign up at `/signup` with the private invite code, then log in at `/login`.
-3. Open `/appointments` to create, view, or cancel database-saved demo bookings.
-4. Disable `PULSEOS_REGISTRATION_ENABLED` on both services after signup, but keep authentication enabled.
+Flyway migrations are in `services/api/src/main/resources/db/migration`.
 
-See [authentication guide](docs/authentication.md), [security status](SECURITY.md), and [architecture](docs/architecture.md).
+## Security limitations
 
-## Structure
-- `apps/web`: Next.js pages and authenticated server-side API gateway
-- `services/api`: Spring Boot endpoints and PostgreSQL repositories
-- `services/api/src/main/resources/db/migration`: SQL migrations
-- `compose.yaml`: local services
-
-## Roadmap
-Develop more authenticated synthetic workflows, fine-grained RBAC, auditing, integration tests and security reviews before considering clinical deployment.
+Email verification checks mailbox access, **not professional licensure or authorization to access real patient information**. There is no MFA, login throttling, complete revocable-session system, medically compliant hosting, or clinical audit certification. Never store protected health information in this portfolio deployment.

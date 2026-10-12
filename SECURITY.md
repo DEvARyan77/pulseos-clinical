@@ -1,20 +1,13 @@
-# PulseOS security status — not clinical production software
+# Security — development/test application only
 
-Only use **synthetic test records**. Do not use real medical information or deploy for actual patient care.
+PulseOS is not certified for medical use and must not store real patient information.
 
-## Current demonstrations
-- Opt-in authentication with BCrypt password hashes, invitation-code enrollment and signed 15-minute JWT sessions
-- HttpOnly + Secure (production) + SameSite=Lax session cookie handled by Next.js; no browser-local storage token
-- Account records persisted in PostgreSQL
-- Demo appointments persisted in PostgreSQL, bound to the authenticated account and restricted to hardcoded `DEMO-1001` through `DEMO-1007` IDs
-- Flyway-controlled database migrations and synthetic frontend chart fixtures
-- No patient names, messages, clinical notes, or free-text health data accepted by the demo appointment API
+- Registration uses an email verification code (6 digits), valid 10 minutes.
+- Codes are HMAC-SHA256 hashed before persistence; the key is derived from the private JWT signing key. Failed attempts are limited to five; resend cooldown is 60 seconds per email.
+- Pending registration records include BCrypt password hashes; no account is activated before email verification.
+- Outbound verification email delivery is fail-closed. Invalid provider configuration cannot silently allow account creation.
+- Credentials for Gmail SMTP or HTTPS email providers must remain in deployment secrets, not Git.
+- Existing user-scoped patient and appointment APIs remain authorization-protected.
+- **An email-verified account is not automatically an authorized clinician**. This app uses fictional data only.
 
-## Still missing
-- MFA and centralized identity, login throttling and account lockouts
-- Proper invitation issuance/revocation, email verification, password resets and revocable sessions
-- Trusted audit trails, medical access controls, data retention/backup tests
-- Privacy and compliance reviews, deployment penetration tests and clinical validation
-- Full integration and end-to-end test coverage
-
-Enabling registration on a publicly accessible service permits anyone with the shared invite code to create a clinician account. Use a strong secret and disable enrollment as soon as setup is complete. Keep database credentials private and rotate exposed credentials.
+Missing: robust IP-based signup throttling, MFA, password recovery, signed invitation lifecycle, proven secure email infrastructure, comprehensive audit trails, regulatory safeguards, and penetration testing.

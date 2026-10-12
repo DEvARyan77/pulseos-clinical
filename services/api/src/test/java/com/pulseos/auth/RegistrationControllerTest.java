@@ -1,49 +1,66 @@
 package com.pulseos.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
+import java.util.Optional;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 class RegistrationControllerTest {
-    private static final String INVITE = "a-long-demo-only-invite-code-123456";
+    private final StaffAccountRepository accounts = mock(StaffAccountRepository.class);
+    private final PendingRegistrationRepository pending = mock(PendingRegistrationRepository.class);
+    private final PasswordEncoder passwords = mock(PasswordEncoder.class);
+    private final VerificationMailSender mailer = mock(VerificationMailSender.class);
+    private final SecretKey key = new SecretKeySpec(new byte[32], "HmacSHA256");
 
-    @Test
-    void refusesToRegisterWithoutAnInvitation() {
-        StaffAccountRepository accounts = mock(StaffAccountRepository.class);
-        PasswordEncoder encoder = mock(PasswordEncoder.class);
-        RegistrationController controller = new RegistrationController(accounts, encoder, true, INVITE);
-        var request = new RegistrationController.RegisterRequest(
-            "clinician", "clinician@example.test", "long-demo-password", "invalid");
-        assertThat(controller.register(request).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        verifyNoInteractions(accounts);
+    private RegistrationController controller(boolean enabled) {
+        return new RegistrationController(accounts, pending, passwords, mailer, key, enabled);
+    }
+
+    private RegistrationController.RegisterRequest registration() {
+        return new RegistrationController.RegisterRequest(
+            "Doctor", "doctor@example.test", "long-sample-password");
     }
 
     @Test
-    void closedEnrollmentCannotCreateUsers() {
-        StaffAccountRepository accounts = mock(StaffAccountRepository.class);
-        RegistrationController controller = new RegistrationController(
-            accounts, mock(PasswordEncoder.class), false, INVITE);
-        var request = new RegistrationController.RegisterRequest(
-            "clinician", "clinician@example.test", "long-demo-password", INVITE);
-        assertThat(controller.register(request).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
-        verifyNoInteractions(accounts);
+    void closedEnrollmentDoesNotSendEmailOrCreateAccount() {
+        assertThat(controller(false).register(registration()).getStatusCode())
+            .isEqualTo(HttpStatus.FORBIDDEN);
+        verifyNoInteractions(accounts, pending, passwords, mailer);
     }
 
     @Test
-    void invitedClinicianIsHashedAndPersisted() {
-        StaffAccountRepository accounts = mock(StaffAccountRepository.class);
-        PasswordEncoder encoder = mock(PasswordEncoder.class);
-        when(encoder.encode("long-demo-password")).thenReturn("encoded-hash");
-        when(accounts.saveAndFlush(any(StaffAccount.class))).thenAnswer(x -> x.getArgument(0));
-        var controller = new RegistrationController(accounts, encoder, true, INVITE);
-        var response = controller.register(new RegistrationController.RegisterRequest(
-            "Clinician", "CLINICIAN@example.test", "long-demo-password", INVITE));
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        verify(accounts).saveAndFlush(any(StaffAccount.class));
-        verify(encoder).encode("long-demo-password");
+    void signupOnlyCreatesPendingRecordAndEmailsCode() {
+        when(passwords.encode("long-sample-password")).thenReturn("BCrypt-test-hash");
+        var result = controller(true).register(registration());
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        verify(accounts, never()).saveAndFlush(any());
+        ArgumentCaptor<PendingRegistration> captor =
+            ArgumentCaptor.forClass(PendingRegistration.class);
+        verify(pending).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getUsername()).isEqualTo("doctor");
+        assertThat(captor.getValue().getEmail()).isEqualTo("doctor@example.test");
+        assertThat(captor.getValue().getExpiresAt().isAfter(captor.getValue().getSentAt()))
+            .isTrue();
+        verify(mailer).send(eq("doctor@example.test"), argThat(code -> code.matches("[0-9]{6}")));
+    }
+
+    @Test
+    void incorrectOrExpiredCodeCannotActivateAccount() {
+        var row = new PendingRegistration("doctor", "doctor@example.test",
+            "hashed-password", "not-the-real-hash",
+            java.time.Instant.now(), java.time.Instant.now().plusSeconds(600));
+        when(pending.findByEmail("doctor@example.test")).thenReturn(Optional.of(row));
+        var result = controller(true).verify(new RegistrationController.VerifyRequest(
+            "doctor@example.test", "123456"));
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(row.getAttempts()).isEqualTo(1);
+        verify(accounts, never()).saveAndFlush(any());
     }
 }

@@ -13,15 +13,14 @@ export default function SignupPage() {
       <div className={styles.toolbar}><ThemeSwitcher /></div>
       <section className={styles.card}>
         <div className={styles.wordmark}>Pulse<span>OS</span></div>
-        <div className={styles.kicker}>STAFF ENROLLMENT</div>
+        <div className={styles.kicker}>EMAIL-VERIFIED ACCOUNT</div>
         <h1>Create your account.</h1>
-        <p>Create an invited staff account to access the workspace.</p>
+        <p>Register with your email, then enter the one-time verification code we send you.</p>
         {!enabled && <p className={styles.setupNotice} role="status">
-          Account registration is not enabled on this deployment. The form is visible,
-          but saving an account requires an administrator to enable invitation-only registration.
+          Registration is currently disabled on this deployment. Contact the administrator.
         </p>}
         <SignupForm enabled={enabled} />
-        <p className={styles.formLink}>Already have an account? <Link href="/login">Sign in</Link></p>
+        <p className={styles.formLink}>Already registered? <Link href="/login">Sign in</Link></p>
         <div className={styles.notice}>Portfolio environment — fictional patient records only.</div>
       </section>
     </main>
