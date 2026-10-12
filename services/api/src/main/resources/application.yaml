@@ -15,21 +15,10 @@ spring:
       ddl-auto: validate
   flyway:
     enabled: true
-  mail:
-    host: ${PULSEOS_SMTP_HOST:}
-    port: ${PULSEOS_SMTP_PORT:587}
-    username: ${PULSEOS_SMTP_USER:}
-    password: ${PULSEOS_SMTP_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-          connectiontimeout: 10000
-          timeout: 10000
-          writetimeout: 10000
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:
@@ -40,3 +29,5 @@ management:
 pulseos:
   auth:
     enabled: ${PULSEOS_AUTH_ENABLED:false}
+  mail:
+    provider: ${PULSEOS_EMAIL_PROVIDER:disabled}
