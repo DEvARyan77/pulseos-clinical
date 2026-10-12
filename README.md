@@ -1,65 +1,51 @@
-# PulseOS — Clinical Operations Workspace
+# PulseOS — Medical Operations Portfolio
 
-Full-stack medical operations portfolio project built with Next.js, Spring Boot and PostgreSQL.
+PulseOS is a Next.js 16 + Spring Boot 4.1 + PostgreSQL clinical workspace demonstration.
 
-> **Synthetic records only.** This is not a certified EHR, is not HIPAA-compliant, and is not approved for real patient records.
+> **All medical information shown by the frontend is fictional. Do not enter real patient data. PulseOS is not a certified EHR and is not approved for healthcare deployments.**
 
-## Stack
-- Frontend: Next.js 16 App Router, React 19, TypeScript
-- Backend: Java 21, Spring Boot 4.1, Spring Security 7, REST API
-- Infrastructure: PostgreSQL 17, Docker Compose, GitHub Actions
+## What works
+- Responsive patient queue with search, status filters and selected-patient switching (fictional UI fixtures)
+- Read-only synthetic vitals, allergies, diagnoses, medications, visit notes and activity timeline
+- Interactive local demo task checklist
+- Light / Dark / System appearance with persisted choice
+- Real staff **signup** (invitation-restricted), **login**, JWT session checks and logout when authentication is enabled
+- PostgreSQL staff accounts created using Flyway, passwords protected with BCrypt
 
-## Development milestones
-1. **Foundation:** Next.js, Spring Boot, PostgreSQL, Docker and API status endpoint.
-2. **Clinical workspace UI:** Responsive patient queue, fictional charts, tabs, demo timeline and theme switching (Light / Dark / System).
-3. **Staff login foundation:** BCrypt-verified single staff account, signed short-lived JWT, authenticated `/api/v1/auth/me`, Next.js server-side route guarding, HttpOnly session cookie, and sign-out control.
+## What is not built yet
+- Database-backed patient, appointment and visit-note CRUD
+- Staff role permissions, clinical audit logs, session revocation, MFA, invitation lifecycle, API rate limiting, email confirmation
+- Medical privacy/compliance assessment and production hardening
 
-The medical charts are still **fictional client-side fixtures**. The backend currently stores **no patient records**.
+## Run with Docker
 
-## Local development
 ```bash
 ./scripts/init-env.sh
 docker compose up --build
 ```
 
-Open http://localhost:3000. Authentication is **off by default** to preserve the public demo until deployment secrets are configured.
+Open http://localhost:3000, http://localhost:3000/login or http://localhost:3000/signup. Authentication and registration are OFF by default: the pages remain visible but signup/login forms are disabled until configured.
 
-## Enable staff sign-in (Render or Docker environment)
+## Enable account creation
 
-This is a *single-staff demonstration identity*, not a full identity or access-management system. Set:
+For both frontend and backend set `PULSEOS_AUTH_ENABLED=true`. For both services set `PULSEOS_REGISTRATION_ENABLED=true` if you want new accounts to sign up. On the backend configure `PULSEOS_AUTH_JWT_SECRET_BASE64` and `PULSEOS_REGISTRATION_INVITE_CODE` to independently generated high-entropy secrets.
 
-**Spring Boot API environment**
-- `PULSEOS_AUTH_ENABLED=true`
-- `PULSEOS_AUTH_USERNAME=clinician` (replace with your preferred staff username)
-- `PULSEOS_AUTH_PASSWORD_HASH` = a 12-round BCrypt hash; never a plaintext password
-- `PULSEOS_AUTH_JWT_SECRET_BASE64` = securely generated Base64 secret decoding to at least 32 bytes
-
-**Next.js web environment**
-- `PULSEOS_AUTH_ENABLED=true`
-- `API_INTERNAL_URL` = your API's reachable URL from the Next.js server (for example, the internal service URL on Docker or your Render API HTTPS URL)
-
-Generate a signing key locally:
 ```bash
 openssl rand -base64 48
+openssl rand -hex 24
 ```
 
-Generate the password hash interactively without putting the password in shell history:
-```bash
-docker run --rm -it httpd:2.4-alpine htpasswd -nBC 12 clinician
-```
-The command prints `clinician:<BCrypt hash>`; copy **only the part after the colon** into `PULSEOS_AUTH_PASSWORD_HASH`. Save keys and hashes in your deployment's secret environment configuration, not in Git. Configure both services, then redeploy both.
+Set your existing `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD` to valid PostgreSQL connection values. On Render set `API_INTERNAL_URL` to the deployed API's reachable URL for frontend server requests. The database must be available when the backend starts.
 
-When enabled:
-- Open `/login`, sign in, and the server validates the token before rendering `/`.
-- The Next.js server stores the token in a Secure, HttpOnly, SameSite=Lax cookie for 15 minutes.
-- The browser does not receive the JWT in JSON or local storage.
-- The Spring Boot API exposes `POST /api/v1/auth/login` and protected `GET /api/v1/auth/me`.
-- Sign-out clears the cookie. Tokens already issued remain valid on the API until expiry, so do not use this setup for real clinical records.
+After signup succeeds, disable registration on both services; keep auth enabled to allow existing users to log in.
 
-Misconfigured enablement on one service cannot establish a valid session. The API rejects startup when authentication is enabled without proper secrets or a BCrypt password hash.
+Detailed configuration: [Authentication guide](docs/authentication.md). Security limitations: [SECURITY.md](SECURITY.md).
 
-## Security and deployment status
-See [SECURITY.md](SECURITY.md). No rate limiting, centralized user database, MFA, session revocation, audit trails, authorization for clinical records, operational monitoring, backup recovery, or privacy/compliance reviews have been implemented. Real patient information is prohibited.
+## Architecture
+- `apps/web`: Next.js (server-side session check, BFF login/register/logout, themed clinical demo UI)
+- `services/api`: Spring Boot (JWT signing/verification, BCrypt validation, registration)
+- `services/api/src/main/resources/db/migration`: versioned Flyway migrations
+- `compose.yaml`: local web + API + database orchestration
 
-## Next milestones
-Database migrations; patients and appointments with scoped authorization; write audit logging; integration tests and production hardening.
+## Roadmap
+Implement persistent, audited, permission-controlled appointments, patient charts and clinical notes using synthetic data; then add integration tests, security controls and deployment monitoring.

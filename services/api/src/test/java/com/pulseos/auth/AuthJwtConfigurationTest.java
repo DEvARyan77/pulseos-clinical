@@ -19,8 +19,7 @@ class AuthJwtConfigurationTest {
     void rejectsShortSigningKey() {
         assertThatThrownBy(() -> configuration.jwtSigningKey(Base64.getEncoder()
             .encodeToString("short".getBytes(StandardCharsets.UTF_8))))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("at least 32 bytes");
+            .isInstanceOf(IllegalStateException.class).hasMessageContaining("at least 32 bytes");
     }
 
     @Test
@@ -30,19 +29,10 @@ class AuthJwtConfigurationTest {
         var key = configuration.jwtSigningKey(secret);
         var encoder = configuration.jwtEncoder(key);
         var decoder = configuration.jwtDecoder(key);
-        var claims = JwtClaimsSet.builder()
-            .issuer("pulseos-api").subject("example-clinician")
+        var claims = JwtClaimsSet.builder().issuer("pulseos-api").subject("example-clinician")
             .issuedAt(Instant.now()).expiresAt(Instant.now().plusSeconds(900)).build();
         String token = encoder.encode(JwtEncoderParameters.from(
             JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
-
         assertThat(decoder.decode(token).getSubject()).isEqualTo("example-clinician");
-    }
-
-    @Test
-    void invalidPasswordHashIsRejected() {
-        assertThatThrownBy(() -> configuration.staffUsers("demo", "plaintext"))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("BCrypt");
     }
 }

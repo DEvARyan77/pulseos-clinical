@@ -1,5 +1,6 @@
 "use client";
 import {useMemo,useState} from "react";
+import Link from "next/link";
 import {Activity,CalendarDays,CheckCircle2,ClipboardList,Clock3,FileText,FlaskConical,HeartPulse,Menu,Pill,Search,ShieldCheck} from "lucide-react";
 import ThemeSwitcher from "./theme-switcher";
 import SignOutButton from "./sign-out-button";
@@ -22,7 +23,7 @@ export default function Workspace({apiStatus,authEnabled}:{apiStatus:"connected"
   <header className="topbar">
    <div className="logo"><HeartPulse size={25}/><span>Pulse<b>OS</b></span></div>
    <nav className="topnav" aria-label="Main navigation"><span className="active">Workspace</span><span>Patients</span><span>Appointments</span><span>Care teams</span><span>Reports</span></nav>
-   <div className="topactions"><span className="demo-label"><ShieldCheck size={13}/> SYNTHETIC DEMO</span><ThemeSwitcher/><span className="api-state"><i className={apiStatus==="connected"?"connected":""}/> API {apiStatus}</span><div className="avatar-small" title="Demo clinician">RC</div>{authEnabled && <SignOutButton/>}</div>
+   <div className="topactions"><span className="demo-label"><ShieldCheck size={13}/> SYNTHETIC DEMO</span><ThemeSwitcher/><span className="api-state"><i className={apiStatus==="connected"?"connected":""}/> API {apiStatus}</span><div className="avatar-small" title="Demo clinician">RC</div>{authEnabled ? <SignOutButton/> : <div className="header-auth-links"><Link href="/login">Log in</Link><Link href="/signup">Sign up</Link></div>}</div>
   </header>
   <div className="mobile-queue"><button type="button" onClick={()=>setQueueOpen(!queueOpen)} aria-expanded={queueOpen} aria-controls="patient-queue"><Menu size={17}/> Patient queue</button><span>Clinical workspace</span></div>
   <div className="columns">

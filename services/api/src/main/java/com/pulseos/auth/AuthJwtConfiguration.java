@@ -9,9 +9,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -20,7 +22,6 @@ import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 
 @Configuration
 @ConditionalOnProperty(prefix = "pulseos.auth", name = "enabled", havingValue = "true")
@@ -54,19 +55,26 @@ public class AuthJwtConfiguration {
 
     @Bean
     PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
-    UserDetailsService staffUsers(
-            @Value("${PULSEOS_AUTH_USERNAME:}") String username,
-            @Value("${PULSEOS_AUTH_PASSWORD_HASH:}") String passwordHash) {
-        if (username.isBlank() || username.length() > 80 || passwordHash.isBlank()
-                || !passwordHash.matches("^\\$2[aby]\\$\\d{2}\\$.{53}$")) {
-            throw new IllegalStateException("Configure PULSEOS_AUTH_USERNAME and a BCrypt PULSEOS_AUTH_PASSWORD_HASH");
-        }
-        return new InMemoryUserDetailsManager(User.withUsername(username)
-            .password(passwordHash).roles("CLINICIAN").build());
+    UserDetailsService staffUsers(StaffAccountRepository accounts,
+            @Value("${PULSEOS_AUTH_USERNAME:}") String legacyUsername,
+            @Value("${PULSEOS_AUTH_PASSWORD_HASH:}") String legacyHash) {
+        // The optional legacy staff identity makes previous deployments compatible.
+        // Newly registered users are persisted in PostgreSQL.
+        return username -> accounts.findByUsername(username).map(account -> User
+            .withUsername(account.getUsername()).password(account.getPasswordHash())
+            .roles(account.getRole()).disabled(!account.isEnabled()).build())
+            .orElseGet(() -> {
+                if (!legacyUsername.isBlank() && username.equals(legacyUsername)
+                    && legacyHash.matches("^\\$2[aby]\\$\\d{2}\\$.{53}$")) {
+                    return User.withUsername(legacyUsername).password(legacyHash)
+                        .roles("CLINICIAN").build();
+                }
+                throw new UsernameNotFoundException("Unknown staff account");
+            });
     }
 
     @Bean
