@@ -15,6 +15,10 @@ Existing verified staff accounts remain valid. The previous shared invitation-co
 
 ## Enable email sending
 
+### Gmail on Render Free without SMTP
+
+Follow the [Google Apps Script HTTPS relay guide](gmail-https-relay.md). No app password is needed; it requires manual authorization by the Gmail account owner.
+
 ### Render Free — HTTPS email API
 
 Render Free blocks outbound ports 25, 465 and 587. Gmail app passwords authenticate to SMTP, not the Gmail HTTPS API. Configure a transactional HTTPS email provider, for example Resend:

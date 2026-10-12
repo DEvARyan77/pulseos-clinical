@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
                   upstream.status === 429 ? "Please wait before requesting another code." :
                   upstream.status === 403 ? "Registration is closed." :
                   upstream.status === 400 ? "Check the required fields." :
-                  upstream.status === 503 ? "Email delivery is not configured or temporarily unavailable." :
+                  upstream.status === 503 ? "Verification emails are not connected on this deployment. The administrator must configure the Gmail HTTPS relay or an email provider." :
                   "Registration failed. Please try again.";
     return NextResponse.json({ error },
       { status: [400,403,409,429].includes(upstream.status) ? upstream.status : 503,

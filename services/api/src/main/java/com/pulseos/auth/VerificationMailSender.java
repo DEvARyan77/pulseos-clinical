@@ -24,6 +24,8 @@ public class VerificationMailSender {
     private final String provider;
     private final String from;
     private final String resendApiKey;
+    private final String googleScriptUrl;
+    private final String googleScriptKey;
     private final ObjectProvider<JavaMailSender> smtp;
     private final HttpClient client;
 
@@ -31,12 +33,18 @@ public class VerificationMailSender {
         @Value("${PULSEOS_EMAIL_PROVIDER:disabled}") String provider,
         @Value("${PULSEOS_EMAIL_FROM:}") String from,
         @Value("${PULSEOS_RESEND_API_KEY:}") String resendApiKey,
+        @Value("${PULSEOS_GOOGLE_SCRIPT_URL:}") String googleScriptUrl,
+        @Value("${PULSEOS_GOOGLE_SCRIPT_KEY:}") String googleScriptKey,
         ObjectProvider<JavaMailSender> smtp) {
         this.provider = provider;
         this.from = from;
         this.resendApiKey = resendApiKey;
+        this.googleScriptUrl = googleScriptUrl;
+        this.googleScriptKey = googleScriptKey;
         this.smtp = smtp;
-        this.client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+        this.client = HttpClient.newBuilder()
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .connectTimeout(Duration.ofSeconds(10)).build();
     }
 
     public void send(String destination, String code) {
@@ -57,6 +65,30 @@ public class VerificationMailSender {
                     email.setSubject("Verify your PulseOS email");
                     email.setText(message);
                     mail.send(email);
+                }
+                case "google-script" -> {
+                    if (googleScriptKey.length() < 48) {
+                        throw new IllegalStateException("Google Apps Script relay secret is not configured");
+                    }
+                    URI endpoint = URI.create(googleScriptUrl);
+                    if (!"https".equals(endpoint.getScheme())
+                        || !"script.google.com".equals(endpoint.getHost())
+                        || endpoint.getPort() != -1
+                        || endpoint.getRawQuery() != null
+                        || !endpoint.getPath().matches("/macros/s/[^/]+/exec")) {
+                        throw new IllegalStateException("Google Apps Script relay URL is invalid");
+                    }
+                    String payload = "{\"relayKey\":" + quote(googleScriptKey) +
+                        ",\"email\":" + quote(destination) + ",\"code\":" + quote(code) + "}";
+                    HttpRequest request = HttpRequest.newBuilder(endpoint)
+                        .timeout(Duration.ofSeconds(45))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(payload))
+                        .build();
+                    HttpResponse<String> result = client.send(request, HttpResponse.BodyHandlers.ofString());
+                    if (result.statusCode() != 200 || !"OK".equals(result.body().trim())) {
+                        throw new IllegalStateException("Apps Script mail relay failed");
+                    }
                 }
                 case "resend" -> {
                     if (resendApiKey.isBlank()) throw new IllegalStateException("HTTPS mail API key missing");

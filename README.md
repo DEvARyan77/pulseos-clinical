@@ -15,6 +15,10 @@ Next.js 16, Spring Boot 4.1, PostgreSQL, JWT authentication, patient records, ap
 
 ## Email delivery configuration
 
+### Gmail address on Render Free (Google Apps Script)
+
+Use the [Gmail HTTPS relay setup guide](docs/gmail-https-relay.md) to send email from your own Gmail account without SMTP or a Gmail app password. It uses an Apps Script Web App and a shared secret held only in Google Script Properties and Render environment variables. **This requires an explicit script deployment and Google authorization before signup can send email.**
+
 The backend supports `PULSEOS_EMAIL_PROVIDER=resend` for HTTPS delivery (Render Free compatible) or `PULSEOS_EMAIL_PROVIDER=smtp` for hosts where SMTP ports are allowed. **Email verification cannot send mail until a provider is configured**. It fails closed with 503; no account is created if sending fails.
 
 For **Render Free**, choose an HTTPS provider:
