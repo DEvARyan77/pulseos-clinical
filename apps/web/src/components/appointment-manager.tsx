@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { patients } from "@/lib/demo-data";
+type PatientOption = { id: string; fullName: string };
 import styles from "./appointment-manager.module.css";
 
 type VisitType = "FOLLOW_UP" | "ANNUAL_EXAM" | "CONSULTATION";
@@ -20,7 +20,8 @@ const visitNames: Record<VisitType,string> = {
 
 export default function AppointmentManager() {
   const [items, setItems] = useState<Appointment[]>([]);
-  const [patientId, setPatientId] = useState(patients[0].id);
+  const [patients, setPatients] = useState<PatientOption[]>([]);
+  const [patientId, setPatientId] = useState("");
   const [datetime, setDatetime] = useState("");
   const [visitType, setVisitType] = useState<VisitType>("FOLLOW_UP");
   const [loading, setLoading] = useState(true);
@@ -31,12 +32,21 @@ export default function AppointmentManager() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/demo-appointments", { cache: "no-store" });
+      const [response, patientResponse] = await Promise.all([
+        fetch("/api/demo-appointments", { cache: "no-store" }),
+        fetch("/api/patients", { cache: "no-store" }),
+      ]);
       const result = await response.json() as Appointment[] | { error: string };
+      const patientResult = await patientResponse.json() as PatientOption[] | { error: string };
       if (!response.ok || !Array.isArray(result)) {
         throw new Error(Array.isArray(result) ? "Failed to load appointments" : result.error);
       }
+      if (!patientResponse.ok || !Array.isArray(patientResult)) {
+        throw new Error(Array.isArray(patientResult) ? "Failed to load patients" : patientResult.error);
+      }
       setItems(result);
+      setPatients(patientResult);
+      setPatientId(current => patientResult.some(p => p.id === current) ? current : patientResult[0]?.id ?? "");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Failed to load appointments");
     } finally {
@@ -52,6 +62,10 @@ export default function AppointmentManager() {
     setError("");
     setSuccess("");
     const date = new Date(datetime);
+    if (!patientId || !patients.some(p => p.id === patientId)) {
+      setError("Create a patient in your registry first");
+      return;
+    }
     if (!datetime || !Number.isFinite(date.getTime()) || date.getTime() <= Date.now()) {
       setError("Choose a future date and time");
       return;
@@ -100,11 +114,12 @@ export default function AppointmentManager() {
     <div className={styles.layout}>
       <section className={styles.formCard}>
         <h2>Schedule a visit</h2>
-        <p>Only synthetic patients in the app can be scheduled.</p>
+        <p>Select a record from your account’s patient registry (fictional test data only).</p>
         <form onSubmit={schedule} className={styles.form}>
-          <label htmlFor="booking-patient">Demo patient</label>
+          <label htmlFor="booking-patient">Patient record</label>
           <select id="booking-patient" value={patientId} onChange={event => setPatientId(event.target.value)}>
-            {patients.map(patient => <option key={patient.id} value={patient.id}>{patient.name} · {patient.id}</option>)}
+            {patients.length === 0 && <option value="">Create a patient first</option>}
+            {patients.map(patient => <option key={patient.id} value={patient.id}>{patient.fullName} · {patient.id.slice(0,8)}</option>)}
           </select>
           <label htmlFor="booking-type">Visit type</label>
           <select id="booking-type" value={visitType} onChange={event => setVisitType(event.target.value as VisitType)}>
@@ -113,20 +128,20 @@ export default function AppointmentManager() {
           <label htmlFor="booking-time">Date and time</label>
           <input id="booking-time" type="datetime-local" value={datetime}
             onChange={event => setDatetime(event.target.value)} required />
-          <button type="submit" disabled={saving}>{saving ? "Saving…" : "Schedule appointment"}</button>
+          <button type="submit" disabled={saving || patients.length===0}>{saving ? "Saving…" : "Schedule appointment"}</button>
         </form>
         {error && <p className={styles.error} role="alert">{error}</p>}
         {success && <p className={styles.success} role="status">{success}</p>}
       </section>
       <section className={styles.listCard}>
-        <div className={styles.listHead}><div><h2>My demo appointments</h2><p>{total} upcoming scheduled visit(s)</p></div><button type="button" onClick={()=>void reload()} disabled={loading}>Refresh</button></div>
+        <div className={styles.listHead}><div><h2>Appointments</h2><p>{total} upcoming scheduled visit(s)</p></div><button type="button" onClick={()=>void reload()} disabled={loading}>Refresh</button></div>
         {loading ? <p className={styles.empty}>Loading appointments…</p> : items.length === 0 ?
           <p className={styles.empty}>No appointments yet. Schedule a fictional patient to see a saved visit here.</p> :
           <ul className={styles.list}>{items.map(item => {
             const patient = patients.find(entry => entry.id === item.patientId);
             return <li key={item.id}>
               <div>
-                <strong>{patient?.name ?? item.patientId}</strong>
+                <strong>{patient?.fullName ?? item.patientId}</strong>
                 <p>{visitNames[item.visitType]} · {new Date(item.scheduledAt).toLocaleString()}</p>
                 <span className={item.status === "SCHEDULED" ? styles.active : styles.cancelled}>{item.status === "SCHEDULED" ? "Scheduled" : "Cancelled"}</span>
               </div>

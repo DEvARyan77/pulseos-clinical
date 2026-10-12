@@ -31,7 +31,7 @@ export default async function AppointmentsPage() {
       <div className={styles.content}>
         <p className={styles.overline}>PULSEOS · DEMO OPERATIONS</p>
         <h1>Appointment scheduling</h1>
-        <p className={styles.subtitle}>Create, review and cancel appointments for the seven fictional patients in the demo.</p>
+        <p className={styles.subtitle}>Create, review and cancel appointments for patients in your private test registry.</p>
         {enabled ? <AppointmentManager/> : (
           <div className={styles.disabled}>
             <h2>Staff authentication is not enabled</h2>
