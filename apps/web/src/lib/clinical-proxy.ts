@@ -25,19 +25,27 @@ export async function clinicalProxy(request: NextRequest, path: string, method: 
       if(body.length>limit)return NextResponse.json({error:"Request too large"},{status:413});
     }catch{return NextResponse.json({error:"Invalid JSON"},{status:400});}
   }
+  // Google Apps Script can take up to 45 seconds for an approved demo email.
+  // Keep a longer timeout ONLY for that mail-producing endpoint.
+  const patientEmailRequest=method==="POST"&&/^\/api\/v1\/patients\/[0-9a-fA-F-]{36}\/notifications$/.test(path);
   try {
     const response=await fetch(`${process.env.API_INTERNAL_URL ?? "http://localhost:8080"}${path}`,{
       method,
       headers:{Authorization:`Bearer ${token}`,...(body?{"Content-Type":"application/json"}:{})},
       ...(body?{body}:{}),
       cache:"no-store",
-      signal:AbortSignal.timeout(9000)
+      signal:AbortSignal.timeout(patientEmailRequest?65000:9000)
     });
     const raw=await response.text();
     let content:unknown={};
     try {content=raw?JSON.parse(raw):{};}catch{content={error:"Invalid backend response"};}
     return NextResponse.json(content,{status:response.status,headers:{"Cache-Control":"no-store"}});
-  }catch{return NextResponse.json({error:"Clinical API unavailable"},{status:503});}
+  }catch(error){
+    const timedOut=error instanceof Error && (error.name==="TimeoutError" || error.name==="AbortError");
+    return NextResponse.json({error:patientEmailRequest&&timedOut
+      ?"Patient notification request timed out. Delivery may still be processing. Check notification history before retrying."
+      :"Clinical API unavailable"},{status:503});
+  }
 }
 export function validPatientId(id:string):boolean {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(id);
