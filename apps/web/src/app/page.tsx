@@ -16,6 +16,7 @@ export default async function Home(){
  if(enabled){
   const staff=await currentStaff();
   if(!staff)redirect("/login");
+  if(staff.roles.includes("PATIENT"))redirect("/patient");
   if(staff.roles.includes("ADMIN"))redirect("/admin");
   if(!staff.roles.includes("CLINICIAN"))redirect("/login");
  }

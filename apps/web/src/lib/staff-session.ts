@@ -14,7 +14,7 @@ export async function currentStaff(): Promise<StaffIdentity | null> {
     if (!response.ok) return null;
     const data = await response.json() as { username?: unknown; roles?: unknown };
     if (typeof data.username !== "string" || !Array.isArray(data.roles) ||
-        !data.roles.every((r: unknown) => r === "ADMIN" || r === "CLINICIAN")) return null;
+        !data.roles.every((r: unknown) => r === "ADMIN" || r === "CLINICIAN" || r === "PATIENT")) return null;
     return { username: data.username, roles: data.roles as string[] };
   } catch {
     return null;

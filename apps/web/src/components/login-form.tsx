@@ -19,7 +19,7 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
     setError("");
     setConnectionStatus("");
     if (!enabled) {
-      setError("Staff login is not configured on this deployment. The administrator must enable authentication on both Render services.");
+      setError("Login is not configured on this deployment. The administrator must enable authentication on both Render services.");
       return;
     }
     setPending(true);
@@ -50,7 +50,7 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
 
   return (
     <form onSubmit={submit} className="auth-form">
-      <label htmlFor="staff-user">Staff username or email</label>
+      <label htmlFor="staff-user">Username or verified email</label>
       <input id="staff-user" name="username" value={username}
         onChange={(e) => setUsername(e.target.value)} minLength={1} maxLength={254}
         autoComplete="username" required />

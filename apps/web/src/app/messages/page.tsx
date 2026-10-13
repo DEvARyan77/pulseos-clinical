@@ -8,6 +8,7 @@ export default async function MessagesPage({searchParams}:Props){
  if(process.env.PULSEOS_AUTH_ENABLED!=="true")redirect("/login");
  const staff=await currentStaff();
  if(!staff)redirect("/login");
+ if(staff.roles.includes("PATIENT"))redirect("/patient");
  const params=await searchParams;
  const to=typeof params.to==="string"&&/^[a-zA-Z0-9_.-]{1,80}$/.test(params.to)
    ?params.to:null;

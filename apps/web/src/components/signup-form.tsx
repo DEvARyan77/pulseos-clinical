@@ -7,7 +7,7 @@ import { ArrowLeft, Clock3, MailCheck, RefreshCw } from "lucide-react";
 import styles from "./auth-flow.module.css";
 import { waitForAuthApi, wakeAuthApi } from "@/lib/auth-readiness";
 
-export default function SignupForm({ enabled }: { enabled: boolean }) {
+export default function SignupForm({ enabled, accountType="staff" }: { enabled: boolean; accountType?:"staff"|"patient" }) {
   const router = useRouter();
   const [step, setStep] = useState<"details" | "verify">("details");
   const [username, setUsername] = useState("");
@@ -40,7 +40,7 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
     setPending(true);
     try {
       await waitForAuthApi(setFeedback, true);
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch(accountType==="patient"?"/api/auth/patient-register":"/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, email, password }),
