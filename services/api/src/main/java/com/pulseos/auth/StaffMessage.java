@@ -11,6 +11,7 @@ public class StaffMessage {
   @Column(nullable=false,length=1200) private String content;
   @Column(name="created_at",nullable=false) private Instant createdAt=Instant.now();
   @Column(name="read_at") private Instant readAt;
+  @Column(name="notified_at") private Instant notifiedAt;
   protected StaffMessage(){}
   public StaffMessage(String sender,String recipient,String content){
     this.sender=sender;this.recipient=recipient;this.content=content;
@@ -22,4 +23,6 @@ public class StaffMessage {
   public Instant getCreatedAt(){return createdAt;}
   public Instant getReadAt(){return readAt;}
   public void markRead(){if(readAt==null)readAt=Instant.now();}
+  public void markNotified(){if(notifiedAt==null)notifiedAt=Instant.now();}
+  public Instant getNotifiedAt(){return notifiedAt;}
 }

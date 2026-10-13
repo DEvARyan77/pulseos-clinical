@@ -4,4 +4,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface StaffMessageRepository extends JpaRepository<StaffMessage,UUID> {
   List<StaffMessage> findTop100BySenderOrRecipientOrderByCreatedAtDesc(String sender,String recipient);
   Optional<StaffMessage> findByIdAndRecipient(UUID id,String recipient);
+  List<StaffMessage> findTop100ByReadAtIsNullAndNotifiedAtIsNullAndCreatedAtBeforeOrderByCreatedAtAsc(java.time.Instant cutoff);
 }
