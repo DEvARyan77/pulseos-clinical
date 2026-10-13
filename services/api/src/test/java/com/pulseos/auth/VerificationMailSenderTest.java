@@ -75,6 +75,8 @@ class VerificationMailSenderTest {
             .isEqualTo("Verify your PulseOS email");
         org.assertj.core.api.Assertions.assertThat(reset.getSubject())
             .isEqualTo("Reset your PulseOS password");
+        signup.saveChanges();
+        reset.saveChanges();
         org.assertj.core.api.Assertions.assertThat(signup.getContentType())
             .contains("multipart/");
         org.assertj.core.api.Assertions.assertThat(reset.getContentType())
