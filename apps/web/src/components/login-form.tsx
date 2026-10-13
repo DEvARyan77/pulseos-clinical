@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import PasswordField from "./password-field";
 import { waitForAuthApi, wakeAuthApi } from "@/lib/auth-readiness";
 
-export default function LoginForm({ enabled }: { enabled: boolean }) {
+export default function LoginForm({ enabled, redirectTo }: { enabled: boolean; redirectTo?:string }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -38,7 +38,7 @@ export default function LoginForm({ enabled }: { enabled: boolean }) {
         return;
       }
       setPassword("");
-      router.replace("/");
+      router.replace(redirectTo??"/");
       router.refresh();
     } catch (cause) {
       setConnectionStatus("");

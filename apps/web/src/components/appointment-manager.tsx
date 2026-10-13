@@ -10,7 +10,7 @@ type Appointment = {
   patientId: string;
   scheduledAt: string;
   visitType: VisitType;
-  status: "SCHEDULED" | "CANCELLED";
+  status: "SCHEDULED" | "CHECKED_IN" | "IN_CARE" | "COMPLETED" | "CANCELLED";
 };
 const visitNames: Record<VisitType,string> = {
   FOLLOW_UP: "Follow-up",
@@ -54,7 +54,7 @@ export default function AppointmentManager() {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
-  const total = useMemo(() => items.filter(item => item.status === "SCHEDULED").length, [items]);
+  const total = useMemo(() => items.filter(item => item.status !== "CANCELLED" && item.status !== "COMPLETED").length, [items]);
 
   async function schedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -81,7 +81,7 @@ export default function AppointmentManager() {
         throw new Error("error" in result ? result.error : "Could not create appointment");
       }
       setDatetime("");
-      setSuccess("Demo appointment saved to PostgreSQL.");
+      setSuccess("Appointment saved. The clinician and QR email will be sent when a test email address is allowlisted and the mail provider and public URL are configured.");
       await reload();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create appointment");
@@ -90,6 +90,17 @@ export default function AppointmentManager() {
     }
   }
 
+  async function advance(id:string){
+    setSaving(true);setError("");setSuccess("");
+    try{
+      const response=await fetch(`/api/demo-appointments/${encodeURIComponent(id)}/advance`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:"{}"});
+      const result=await response.json() as {error?:string};
+      if(!response.ok)throw new Error(result.error??"Unable to advance visit");
+      setSuccess("Visit status advanced. A test email is sent only to an approved, configured demo address.");
+      await reload();
+    }catch(cause){setError(cause instanceof Error?cause.message:"Unable to advance visit");}
+    finally{setSaving(false);}
+  }
   async function cancel(id: string) {
     setError("");
     setSuccess("");
@@ -142,8 +153,9 @@ export default function AppointmentManager() {
               <div>
                 <strong>{patient?.fullName ?? item.patientId}</strong>
                 <p>{visitNames[item.visitType]} · {new Date(item.scheduledAt).toLocaleString()}</p>
-                <span className={item.status === "SCHEDULED" ? styles.active : styles.cancelled}>{item.status === "SCHEDULED" ? "Scheduled" : "Cancelled"}</span>
+                <span className={item.status === "CANCELLED" ? styles.cancelled : styles.active}>{item.status.replaceAll("_"," ")}</span>
               </div>
+              {(item.status === "CHECKED_IN" || item.status === "IN_CARE") && <button type="button" disabled={saving} onClick={()=>void advance(item.id)}>Advance stage</button>}
               {item.status === "SCHEDULED" && <button type="button" disabled={saving} onClick={()=>void cancel(item.id)}>Cancel</button>}
             </li>;
           })}</ul>}

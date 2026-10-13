@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import {useEffect,useState} from "react";
 import styles from "./patient-portal.module.css";
 type Visit={id:string;scheduledAt:string;visitType:string;status:string};
@@ -31,7 +32,8 @@ export default function PatientPortal(){
         {record.appointments.map(visit=><div className={styles.visit} key={visit.id}>
           <strong>{visit.visitType.replaceAll("_"," ")}</strong>
           <span>{new Date(visit.scheduledAt).toLocaleString()}</span>
-          <span>{visit.status}</span>
+          <span>{visit.status.replaceAll("_"," ")}</span>
+          {visit.status==="SCHEDULED"&&<Link href={`/patient/checkin?appointment=${visit.id}`}>Check in using QR</Link>}
         </div>)}
       </article>)}
     </>}

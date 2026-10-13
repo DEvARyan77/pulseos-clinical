@@ -5,7 +5,9 @@ import styles from "./login.module.css";
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
+export default async function LoginPage({searchParams}:{searchParams:Promise<{next?:string}>}) {
+  const query=await searchParams;
+  const redirectTo=typeof query.next==="string"&&/^\/patient\/checkin\?appointment=[0-9a-f-]{36}$/.test(query.next)?query.next:undefined;
   const enabled = process.env.PULSEOS_AUTH_ENABLED === "true";
   return (
     <main className={styles.screen}>
@@ -19,7 +21,7 @@ export default function LoginPage() {
           Authentication is not enabled on this deployment. You can try the form,
           but sign-in will not work until the Render environment is configured.
         </div>}
-        <LoginForm enabled={enabled} />
+        <LoginForm enabled={enabled} redirectTo={redirectTo} />
         <p className={styles.formLink}><Link href="/forgot-password">Forgot your password?</Link></p>
         <p className={styles.formLink}>New clinician? <Link href="/signup">Staff registration</Link></p>
         <p className={styles.formLink}>New patient? <Link href="/patient-signup">Register as a patient</Link></p>
