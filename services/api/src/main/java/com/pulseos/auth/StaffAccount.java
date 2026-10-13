@@ -23,6 +23,9 @@ public class StaffAccount {
     @Column(nullable = false, length = 32)
     private String role = "CLINICIAN";
 
+    @Column(name = "display_name", length = 80)
+    private String displayName;
+
     @Column(nullable = false)
     private boolean enabled = true;
 
@@ -37,6 +40,8 @@ public class StaffAccount {
         this.passwordHash = passwordHash;
     }
 
+    public String getDisplayName() { return displayName == null || displayName.isBlank() ? username : displayName; }
+    public void updateDisplayName(String next) { this.displayName = next.strip(); }
     public UUID getId() { return id; }
     public String getUsername() { return username; }
     public String getEmail() { return email; }

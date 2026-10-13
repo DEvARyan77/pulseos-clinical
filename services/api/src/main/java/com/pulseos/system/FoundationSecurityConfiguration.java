@@ -42,6 +42,7 @@ public class FoundationSecurityConfiguration {
         .requestMatchers("/api/v1/admin/**")
           .access(new CurrentRoleAuthorization(staffAccounts, StaffRole.ADMIN, legacyUsername))
         .requestMatchers(HttpMethod.GET,"/api/v1/auth/me").authenticated()
+        .requestMatchers("/api/v1/auth/profile").authenticated()
         .requestMatchers("/api/v1/demo-appointments","/api/v1/demo-appointments/**")
           .access(new CurrentRoleAuthorization(staffAccounts, StaffRole.CLINICIAN, legacyUsername))
         .requestMatchers("/api/v1/patients","/api/v1/patients/**")
