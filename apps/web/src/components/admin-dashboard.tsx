@@ -8,6 +8,11 @@ import SignOutButton from "./sign-out-button";
 import styles from "./admin-dashboard.module.css";
 
 type Role = "ADMIN" | "CLINICIAN";
+type PatientSummary = {
+  id: string; fullName: string; age: number; gender: string; reason: string;
+  room: string; status: "WAITING" | "IN_CARE" | "COMPLETED";
+  owner: string; updatedAt: string;
+};
 type Staff = {
   id: string;
   username: string;
@@ -26,6 +31,10 @@ async function requestJson<T>(path: string, options?: RequestInit): Promise<T> {
 
 export default function AdminDashboard({ username }: { username: string }) {
   const [members, setMembers] = useState<Staff[]>([]);
+  const [patients, setPatients] = useState<PatientSummary[]>([]);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [patientError, setPatientError] = useState("");
+  const [patientsLoading, setPatientsLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -44,7 +53,15 @@ export default function AdminDashboard({ username }: { username: string }) {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  const loadPatients = useCallback(() => {
+    return requestJson<PatientSummary[]>("/api/admin/patients")
+      .then(records => { setPatients(records); setPatientError(""); })
+      .catch((cause: unknown) =>
+        setPatientError(cause instanceof Error ? cause.message : "Unable to load patient records"))
+      .finally(() => setPatientsLoading(false));
+  }, []);
+
+  useEffect(() => { void load(); void loadPatients(); }, [load, loadPatients]);
 
   const counts = useMemo(() => ({
     all: members.length,
@@ -56,6 +73,10 @@ export default function AdminDashboard({ username }: { username: string }) {
   const filtered = members.filter((member) =>
     `${member.username} ${member.email} ${member.role}`
       .toLowerCase().includes(search.trim().toLowerCase()));
+
+  const matchingPatients = patients.filter(patient =>
+    `${patient.fullName} ${patient.owner} ${patient.reason} ${patient.room} ${patient.status}`
+      .toLowerCase().includes(patientSearch.trim().toLowerCase()));
 
   async function change(member: Staff, field: "role" | "status", value: Role | boolean) {
     setBusy(member.id);
@@ -145,6 +166,36 @@ export default function AdminDashboard({ username }: { username: string }) {
             {!loading && filtered.length === 0 && <p className={styles.empty}>No matching staff accounts.</p>}
           </div>
           <p className={styles.note}>Changes are enforced by the API. Staff members should sign in again after role changes. Existing JWTs expire within 15 minutes; do not use this portfolio for real patient information.</p>
+        </section>
+
+        <section className={styles.panel} aria-label="Fictional patient directory" style={{marginTop:24}}>
+          <div className={styles.panelTop}>
+            <div><h2>Patient directory</h2><p>Read-only overview of the 100 most recently updated fictional records across staff accounts.</p></div>
+            <button type="button" className={styles.refresh}
+              onClick={() => { setPatientsLoading(true); void loadPatients(); }}>
+              <RefreshCw size={16}/> Refresh patients
+            </button>
+          </div>
+          <label className={styles.searchLabel}>Search patients
+            <input type="search" placeholder="Search patient, clinician, status or reason"
+              value={patientSearch} onChange={event => setPatientSearch(event.target.value)}/>
+          </label>
+          {patientError && <div className={styles.error} role="alert">{patientError}</div>}
+          <div className={styles.scroll}>
+            <table className={styles.table}>
+              <thead><tr><th>Fictional patient</th><th>Registry owner</th><th>Status</th><th>Room</th><th>Last updated</th></tr></thead>
+              <tbody>{matchingPatients.map(patient => <tr key={patient.id}>
+                <td><strong>{patient.fullName}</strong><span>{patient.age} years · {patient.gender} · {patient.reason}</span></td>
+                <td>{patient.owner}</td>
+                <td>{patient.status.replaceAll("_"," ")}</td>
+                <td>{patient.room}</td>
+                <td>{new Date(patient.updatedAt).toLocaleString()}</td>
+              </tr>)}</tbody>
+            </table>
+            {patientsLoading && <p className={styles.empty}>Loading fictional patients…</p>}
+            {!patientsLoading && matchingPatients.length === 0 && <p className={styles.empty}>No matching fictional patient records.</p>}
+          </div>
+          <p className={styles.note}>Admin access here is read-only; patient charts and visit notes remain clinician-restricted.</p>
         </section>
       </div>
     </main>

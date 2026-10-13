@@ -77,6 +77,7 @@ Replace the example email with the actual verified staff account. If the query r
 | Capability | Clinician | Admin |
 |---|---|---|
 | Own fictional patient records, notes and appointments | Yes | No |
+| Read-only list of the 100 most recently updated fictional patient records | No | Yes |
 | List all staff accounts | No | Yes |
 | Assign Admin or Clinician roles to other staff | No | Yes |
 | Enable or disable other staff accounts | No | Yes |
