@@ -9,5 +9,6 @@ public interface StaffAccountRepository extends JpaRepository<StaffAccount, UUID
     Optional<StaffAccount> findByEmail(String email);
     boolean existsByUsername(String username);
     boolean existsByEmail(String email);
+    boolean existsByRole(String role);
     java.util.List<StaffAccount> findAllByOrderByCreatedAtDesc();
 }

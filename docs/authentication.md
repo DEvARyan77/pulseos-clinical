@@ -97,6 +97,13 @@ Replace the example email with the actual verified staff account. If the query r
 
 This is a synthetic portfolio, not a production clinical authorization implementation. Consider a separate audit log, MFA, fine-grained permissions, and stronger approval workflows before any production or regulated use.
 
+
+### One-time Admin bootstrap through Render
+
+When connected database tools are read-only, the backend supports a **privileged setup-only** variable `PULSEOS_BOOTSTRAP_ADMIN_EMAIL`. Set it to the email address of an **existing, enabled, email-verified** staff account in the API Render environment, and redeploy. On startup, if and only if no Admin account exists, PulseOS promotes exactly that existing account. The configured address is never written to source files or application logs; public signups cannot select a role.
+
+After confirming an Admin exists, **clear this environment variable** in Render and redeploy. Existing Admin status persists in PostgreSQL, and later startup does not grant any further roles. The Render environment, not the web app, controls this privileged operation.
+
 ## Troubleshooting
 
 - "Email delivery is not configured" (503): configure a supported email provider and valid sender credentials.
