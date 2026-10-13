@@ -86,7 +86,7 @@ export default function ForgotPasswordForm({ enabled }: { enabled: boolean }) {
           <label htmlFor="reset-email">Account email address</label>
           <input id="reset-email" type="email" autoComplete="email" value={email}
             onChange={(event) => setEmail(event.target.value)} maxLength={254} required />
-          <p className="auth-description">We'll send a six-digit code if an account exists for this email.</p>
+          <p className="auth-description">We&apos;ll send a six-digit code if an account exists for this email.</p>
           <button className="auth-submit" type="submit" disabled={busy}>
             {busy ? "Connecting to account service…" : "Email me a reset code"}
           </button>

@@ -29,13 +29,11 @@ export default function AppointmentManager() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const reload = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [response, patientResponse] = await Promise.all([
-        fetch("/api/demo-appointments", { cache: "no-store" }),
-        fetch("/api/patients", { cache: "no-store" }),
-      ]);
+  const reload = useCallback(() => {
+    return Promise.all([
+      fetch("/api/demo-appointments", { cache: "no-store" }),
+      fetch("/api/patients", { cache: "no-store" }),
+    ]).then(async ([response, patientResponse]) => {
       const result = await response.json() as Appointment[] | { error: string };
       const patientResult = await patientResponse.json() as PatientOption[] | { error: string };
       if (!response.ok || !Array.isArray(result)) {
@@ -44,14 +42,15 @@ export default function AppointmentManager() {
       if (!patientResponse.ok || !Array.isArray(patientResult)) {
         throw new Error(Array.isArray(patientResult) ? "Failed to load patients" : patientResult.error);
       }
+      return { result, patientResult };
+    }).then(({ result, patientResult }) => {
       setItems(result);
       setPatients(patientResult);
       setPatientId(current => patientResult.some(p => p.id === current) ? current : patientResult[0]?.id ?? "");
-    } catch (cause) {
+      setError("");
+    }).catch((cause: unknown) => {
       setError(cause instanceof Error ? cause.message : "Failed to load appointments");
-    } finally {
-      setLoading(false);
-    }
+    }).finally(() => setLoading(false));
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
@@ -134,7 +133,7 @@ export default function AppointmentManager() {
         {success && <p className={styles.success} role="status">{success}</p>}
       </section>
       <section className={styles.listCard}>
-        <div className={styles.listHead}><div><h2>Appointments</h2><p>{total} upcoming scheduled visit(s)</p></div><button type="button" onClick={()=>void reload()} disabled={loading}>Refresh</button></div>
+        <div className={styles.listHead}><div><h2>Appointments</h2><p>{total} upcoming scheduled visit(s)</p></div><button type="button" onClick={()=>{setLoading(true);void reload();}} disabled={loading}>Refresh</button></div>
         {loading ? <p className={styles.empty}>Loading appointments…</p> : items.length === 0 ?
           <p className={styles.empty}>No appointments yet. Schedule a fictional patient to see a saved visit here.</p> :
           <ul className={styles.list}>{items.map(item => {

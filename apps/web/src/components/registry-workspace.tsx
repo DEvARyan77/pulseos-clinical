@@ -47,17 +47,18 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
  const [mobileQueue,setMobileQueue]=useState(false);
 
  const active=records.find(p=>p.id===selected)??null;
- const reload=useCallback(async()=>{
-  try{
-   const data=await jsonRequest<Patient[]>("/api/patients");
-   setRecords(data);
-   setSelected(current=>current&&data.some(p=>p.id===current)?current:data[0]?.id??null);
-  }catch(cause){setError(cause instanceof Error?cause.message:"Cannot load patient registry");}
-  finally{setLoading(false);}
+ const reload=useCallback(()=>{
+  return jsonRequest<Patient[]>("/api/patients")
+   .then(data=>{
+    setRecords(data);
+    setSelected(current=>current&&data.some(p=>p.id===current)?current:data[0]?.id??null);
+   })
+   .catch((cause:unknown)=>setError(cause instanceof Error?cause.message:"Cannot load patient registry"))
+   .finally(()=>setLoading(false));
  },[]);
  useEffect(()=>{void reload();},[reload]);
  useEffect(()=>{
-  if(!selected){setNotes([]);setHistory([]);return;}
+  if(!selected)return;
   let alive=true;
   Promise.all([
    jsonRequest<Note[]>(`/api/patients/${selected}/notes`),

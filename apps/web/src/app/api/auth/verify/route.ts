@@ -35,7 +35,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Email verified. You may sign in." },
         { status: 200, headers: { "Cache-Control": "no-store" } });
     }
-    const result = await upstream.json().catch(() => ({})) as { error?: string };
     const error = upstream.status === 429 ? "Too many incorrect attempts. Request a new code." :
                   upstream.status === 400 ? "Incorrect or expired code. Please check and try again." :
                   upstream.status === 403 ? "Registration is closed." :

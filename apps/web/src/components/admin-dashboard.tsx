@@ -31,16 +31,16 @@ export default function AdminDashboard({ username }: { username: string }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    setError("");
-    try {
-      const records = await requestJson<Staff[]>("/api/admin/staff");
-      setMembers(records);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to load staff accounts");
-    } finally {
-      setLoading(false);
-    }
+  const load = useCallback(() => {
+    return requestJson<Staff[]>("/api/admin/staff")
+      .then((records) => {
+        setMembers(records);
+        setError("");
+      })
+      .catch((cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : "Unable to load staff accounts");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { void load(); }, [load]);
