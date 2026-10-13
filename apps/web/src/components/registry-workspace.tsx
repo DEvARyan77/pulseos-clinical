@@ -247,7 +247,7 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
        </section>}
        {tab==="Care Team"&&<section className={styles.panel}>
         <h2>Care team assignments</h2>
-        <p className={styles.helper}>Link a responsible clinician and supervisor for this fictional patient. Only active verified staff can be assigned. Assignments help you find teammates for chat, but do not grant access to this patient's medical chart.</p>
+        <p className={styles.helper}>Link a responsible clinician and supervisor for this fictional patient. Only active verified staff can be assigned. Assignments help you find teammates for chat, but do not grant access to this patient&apos;s medical chart.</p>
         <form onSubmit={saveCareTeam} className={styles.careForm}>
           <label htmlFor="team-clinician">Responsible clinician
             <select id="team-clinician" value={clinician} onChange={e=>setClinician(e.target.value)} disabled={busy||team===null}>
