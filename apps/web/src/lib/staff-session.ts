@@ -30,5 +30,7 @@ export async function currentStaff(): Promise<StaffIdentity | null> {
       // Render free instances may be waking; retry transient network failures.
     }
   }
-  return null;
+  // Infrastructure outages are NOT authentication failures. Keeping the
+  // session cookie intact lets the user retry after Render wakes up.
+  throw new Error("PULSEOS_SESSION_API_UNAVAILABLE");
 }
