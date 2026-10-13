@@ -14,7 +14,7 @@ async function json<T>(url:string,options?:RequestInit):Promise<T>{
  if(!response.ok)throw new Error(data.error??"Message service unavailable");
  return data;
 }
-export default function StaffChat({username,role}:{username:string;role:"ADMIN"|"CLINICIAN"}){
+export default function StaffChat({username,role,initialTarget}:{username:string;role:"ADMIN"|"CLINICIAN";initialTarget:string|null}){
  const [contacts,setContacts]=useState<Contact[]>([]);
  const [messages,setMessages]=useState<Message[]>([]);
  const [target,setTarget]=useState<string|null>(null);
@@ -27,10 +27,11 @@ export default function StaffChat({username,role}:{username:string;role:"ADMIN"|
      json<Message[]>("/api/staff-chat/messages")
    ]).then(([people,history])=>{
      setContacts(people);setMessages(history);
-     setTarget(previous=>previous&&people.some(p=>p.username===previous)?previous:people[0]?.username??null);
+     setTarget(previous=>previous&&people.some(p=>p.username===previous)?previous:
+       people.find(p=>p.username===initialTarget)?.username??people[0]?.username??null);
      setError("");
    }).catch((cause:unknown)=>setError(cause instanceof Error?cause.message:"Cannot load messages"));
- },[]);
+ },[initialTarget]);
  useEffect(()=>{
    void reload();
    const timer=setInterval(()=>{void reload();},15000);

@@ -18,3 +18,14 @@
 .notificationActions{display:flex;gap:10px;flex-wrap:wrap;margin:19px 0}
 @media(max-width:850px){.contactCard{flex-direction:column;align-items:stretch}.contactCard button{align-self:flex-start}}
 @media(max-width:440px){.filterBar{grid-template-columns:1fr}.notificationActions button{width:100%}}
+
+/* Assigned clinician / supervisor coordination */
+.careForm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0}
+.careForm label{display:flex;flex-direction:column;gap:9px;font-size:12px;font-weight:700}
+.careForm select{width:100%;min-width:0;border:1px solid var(--line);border-radius:9px;padding:12px;background:var(--surface);color:var(--text);font:inherit;font-weight:500}
+.careForm button{grid-column:1/-1;justify-self:start;min-width:175px}
+.teamLinks{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:20px}
+.teamLinks a{display:inline-flex;align-items:center;gap:9px;color:var(--accent-text);background:var(--accent-bg);border:1px solid var(--accent);text-decoration:none;font-size:12px;font-weight:750;padding:11px 13px;border-radius:9px}
+.teamLinks a:hover{filter:brightness(.97)}
+.teamLinks small{width:100%;color:var(--muted);font-size:11px}
+@media(max-width:650px){.careForm{grid-template-columns:1fr}.teamLinks a{width:100%;justify-content:center}}

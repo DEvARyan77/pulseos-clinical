@@ -22,6 +22,16 @@ The allowlist is **empty by default**; then no external patient emails can be se
 
 The Apps Script mail relay must also be updated to the new version from `scripts/google-mail-relay.gs` through **Deploy → Manage deployments → Edit → New version → Deploy**, retaining its existing URL and secret. The updated script accepts `kind: "patient"` with an empty code and sends a fixed, styled HTML demo notification with a plain-text fallback. Older relay versions will reject this message type.
 
+## Care team assignments
+
+The **Care Team** tab on each fictional patient profile lets the patient record's owning clinician select an **active Clinician** and **active Admin/Supervisor**. An assignment must match a registered and enabled staff account with the required role; selecting a username or editing the browser request cannot bypass the API's validation.
+
+The owner can change or remove either assignment. Every change is recorded as `CARE_TEAM_UPDATED` in the patient's audit history. Assignments are stored separately in PostgreSQL by migration V8.
+
+Care team assignments are for coordination **only**: they **do not grant** chart, notes, notifications, or history access to the assigned team member. Existing patient records remain visible only to their original owner. This avoids accidentally expanding access to clinical-looking data without a separate authorization review.
+
+Saved assignments provide **Message assigned clinician** and **Message supervisor** shortcuts; those links open `/messages?to=username` and select the recipient from the server-approved staff directory. They never include patient names or other clinical information in URLs or chat content. The messenger remains demo-only and does not represent an on-call roster, automatically route emergency escalations, or provide actual clinical supervision.
+
 ## In-app notifications
 
 Clinicians can record an in-app demo notification under the selected patient's **Notifications** tab. This is an *internal staff-visible log*, **not a patient portal or a push notification**. There is no claim that an external patient has read it. Email notifications are separate from these internal records.

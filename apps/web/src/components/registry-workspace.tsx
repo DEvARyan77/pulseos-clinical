@@ -15,7 +15,9 @@ type PatientInput={
 type Patient=PatientInput&{id:string;createdAt:string;updatedAt:string;version:number};
 type Note={id:string;content:string;createdAt:string;owner:string};
 type Audit={id:string;action:string;actor:string;happenedAt:string};
-type Tab="Overview"|"Notes"|"History"|"Notifications";
+type Tab="Overview"|"Notes"|"History"|"Notifications"|"Care Team";
+type CareTeam={patientId:string;clinicianUsername:string|null;supervisorUsername:string|null;updatedAt:string|null};
+type CareMember={username:string;role:"CLINICIAN"|"ADMIN"};
 type Notification={id:string;channel:"EMAIL"|"IN_APP";status:string;message:string;createdAt:string};
 const blank:PatientInput={fullName:"",age:35,gender:"Unspecified",reason:"General consultation",room:"Unassigned",status:"WAITING",bp:"—",heartRate:null,oxygen:null,temperature:"—",allergies:"",diagnoses:"",medications:"",contactEmail:null};
 const fields:[keyof PatientInput,string,number][]=[
@@ -43,6 +45,10 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
  const [notes,setNotes]=useState<Note[]>([]);
  const [history,setHistory]=useState<Audit[]>([]);
  const [notifications,setNotifications]=useState<Notification[]>([]);
+ const [team,setTeam]=useState<CareTeam|null>(null);
+ const [members,setMembers]=useState<CareMember[]>([]);
+ const [clinician,setClinician]=useState("");
+ const [supervisor,setSupervisor]=useState("");
  const [noteText,setNoteText]=useState("");
  const [busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true);
@@ -62,13 +68,26 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
  },[]);
  useEffect(()=>{void reload();},[reload]);
  useEffect(()=>{
+  void jsonRequest<CareMember[]>("/api/patients/care-team/contacts")
+   .then(data=>setMembers(data))
+   .catch((cause:unknown)=>setError(cause instanceof Error?cause.message:"Could not load care-team directory"));
+ },[]);
+ useEffect(()=>{
   if(!selected)return;
   let alive=true;
   Promise.all([
    jsonRequest<Note[]>(`/api/patients/${selected}/notes`),
    jsonRequest<Audit[]>(`/api/patients/${selected}/history`),
-   jsonRequest<Notification[]>(`/api/patients/${selected}/notifications`)
-  ]).then(([n,h,items])=>{if(alive){setNotes(n);setHistory(h);setNotifications(items);}})
+   jsonRequest<Notification[]>(`/api/patients/${selected}/notifications`),
+   jsonRequest<CareTeam>(`/api/patients/${selected}/care-team`)
+  ]).then(([n,h,items,assigned])=>{
+   if(alive){
+    setNotes(n);setHistory(h);setNotifications(items);
+    setTeam(assigned);
+    setClinician(assigned.clinicianUsername??"");
+    setSupervisor(assigned.supervisorUsername??"");
+   }
+  })
    .catch(cause=>{if(alive)setError(cause instanceof Error?cause.message:"Cannot load visit timeline");});
   return()=>{alive=false;};
  },[selected]);
@@ -104,6 +123,23 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
    ]);setNotes(n);setHistory(h);setMessage("Visit note saved and recorded in history.");
   }catch(cause){setError(cause instanceof Error?cause.message:"Cannot save note");}
   finally{setBusy(false);}
+ }
+ async function saveCareTeam(event:FormEvent<HTMLFormElement>){
+  event.preventDefault();
+  if(!active)return;
+  setBusy(true);setError("");setMessage("");
+  try {
+    const updated=await jsonRequest<CareTeam>(`/api/patients/${active.id}/care-team`,{
+      method:"PUT",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({clinicianUsername:clinician||null,supervisorUsername:supervisor||null})
+    });
+    setTeam(updated);
+    const changes=await jsonRequest<Audit[]>(`/api/patients/${active.id}/history`);
+    setHistory(changes);
+    setMessage("Care team saved. Patient chart permissions are unchanged.");
+  }catch(cause){
+    setError(cause instanceof Error?cause.message:"Unable to update care team");
+  }finally{setBusy(false);}
  }
  async function sendNotification(channel:"EMAIL"|"IN_APP"){
   if(!active)return;
@@ -148,7 +184,7 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
      <div className={styles.queueActions}><button type="button" onClick={startNew}><Plus size={16}/> Add patient</button><Link href="/appointments"><CalendarDays size={15}/> Appointments</Link></div>
      <div className="queue-rows">
       {loading?<p className="empty">Loading records…</p>:shown.length===0?<p className="empty">{records.length?"No matching records.":"No patients yet. Add a fictional patient to begin."}</p>:
-      shown.map(p=><button type="button" key={p.id} className={active?.id===p.id?"patient-row picked":"patient-row"} aria-pressed={active?.id===p.id} onClick={()=>{setSelected(p.id);setMode("view");setTab("Overview");setError("");setMessage("");setMobileQueue(false);}}>
+      shown.map(p=><button type="button" key={p.id} className={active?.id===p.id?"patient-row picked":"patient-row"} aria-pressed={active?.id===p.id} onClick={()=>{setSelected(p.id);setTeam(null);setClinician("");setSupervisor("");setMode("view");setTab("Overview");setError("");setMessage("");setMobileQueue(false);}}>
        <span className="patient-time">{statuses[p.status]}</span><span className="patient-list-detail"><strong>{p.fullName}</strong><small>{p.age} years · {p.reason}</small><small>{p.room}</small></span>
       </button>)}
      </div>
@@ -182,7 +218,7 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
         <div className="patient-info"><span className="eyebrow">ACCOUNT PATIENT RECORD</span><h1>{active.fullName}</h1><p>{active.age} years · {active.gender}</p><div className="patient-chips"><span>{statuses[active.status]}</span><span>{active.reason}</span></div></div>
         <button type="button" className={styles.primarySmall} onClick={startEdit}>Edit patient</button>
        </div>
-       <nav className="chart-tabs" aria-label="Patient sections">{(["Overview","Notes","History","Notifications"] as const).map(t=><button type="button" key={t} className={tab===t?"current":""} onClick={()=>setTab(t)}>{t}</button>)}</nav>
+       <nav className="chart-tabs" aria-label="Patient sections">{(["Overview","Notes","History","Notifications","Care Team"] as const).map(t=><button type="button" key={t} className={tab===t?"current":""} onClick={()=>setTab(t)}>{t}</button>)}</nav>
        {tab==="Overview"&&<>
         <div className="section-title"><h2>Clinical overview</h2><span>Last edited {readable(active.updatedAt)}</span></div>
         <div className="overview-grid">
@@ -209,6 +245,31 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
        {tab==="History"&&<section className={styles.panel}><h2>Audit history</h2><p className={styles.helper}>Actions are timestamped and attributed to the signed-in staff account.</p>
         {history.map(h=><div className={styles.event} key={h.id}><strong>{h.action.replaceAll("_"," ")}</strong><small>{readable(h.happenedAt)} · {h.actor}</small></div>)}
        </section>}
+       {tab==="Care Team"&&<section className={styles.panel}>
+        <h2>Care team assignments</h2>
+        <p className={styles.helper}>Link a responsible clinician and supervisor for this fictional patient. Only active verified staff can be assigned. Assignments help you find teammates for chat, but do not grant access to this patient's medical chart.</p>
+        <form onSubmit={saveCareTeam} className={styles.careForm}>
+          <label htmlFor="team-clinician">Responsible clinician
+            <select id="team-clinician" value={clinician} onChange={e=>setClinician(e.target.value)} disabled={busy||team===null}>
+              <option value="">Unassigned / patient owner only</option>
+              {members.filter(member=>member.role==="CLINICIAN").map(member=><option value={member.username} key={member.username}>{member.username}</option>)}
+            </select>
+          </label>
+          <label htmlFor="team-supervisor">Supervisor
+            <select id="team-supervisor" value={supervisor} onChange={e=>setSupervisor(e.target.value)} disabled={busy||team===null}>
+              <option value="">No supervisor assigned</option>
+              {members.filter(member=>member.role==="ADMIN").map(member=><option value={member.username} key={member.username}>{member.username} (Admin)</option>)}
+            </select>
+          </label>
+          <button className={styles.primary} type="submit" disabled={busy||team===null}>{busy?"Saving…":"Save care team"}</button>
+        </form>
+        <div className={styles.teamLinks}>
+          {team?.clinicianUsername&&<Link href={`/messages?to=${encodeURIComponent(team.clinicianUsername)}`}><MessageCircle size={16}/> Message assigned clinician</Link>}
+          {team?.supervisorUsername&&<Link href={`/messages?to=${encodeURIComponent(team.supervisorUsername)}`}><MessageCircle size={16}/> Message supervisor</Link>}
+          {!team?.clinicianUsername&&!team?.supervisorUsername&&<p className={styles.helper}>Save an assignment to see quick links to your care team.</p>}
+          {team?.updatedAt&&<small>Last assignment change: {readable(team.updatedAt)}</small>}
+        </div>
+       </section>}
        {tab==="Notifications"&&<section className={styles.panel}>
          <h2><Bell size={18}/> Patient notifications</h2>
          <p className={styles.helper}>In-app notifications are recorded within the staff demo. Email sends a fixed, non-clinical message only to an approved demo address.</p>
@@ -232,6 +293,7 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
      <div className="side-section"><div className="side-title"><h2>Quick navigation</h2></div><div className={styles.links}>
        <Link href="/appointments"><CalendarDays size={16}/> Book an appointment</Link>
        <Link href="/messages"><MessageCircle size={16}/> Chat with staff or supervisor</Link>
+       <button type="button" onClick={()=>{if(active){setMode("view");setTab("Care Team");}}} disabled={!active}><UserRound size={16}/> Care team assignments</button>
        <button type="button" onClick={()=>{if(active){setMode("view");setTab("Notes");}}} disabled={!active}><FileText size={16}/> Visit notes</button>
        <button type="button" onClick={()=>{if(active){setMode("view");setTab("History");}}} disabled={!active}><History size={16}/> View audit trail</button>
      </div></div>
