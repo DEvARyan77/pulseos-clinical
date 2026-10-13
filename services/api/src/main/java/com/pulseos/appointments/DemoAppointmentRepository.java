@@ -7,5 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface DemoAppointmentRepository extends JpaRepository<DemoAppointment, UUID> {
     List<DemoAppointment> findByCreatedByOrderByScheduledAtAsc(String createdBy);
+    List<DemoAppointment> findByPatientIdOrderByScheduledAtAsc(String patientId);
     Optional<DemoAppointment> findByIdAndCreatedBy(UUID id, String createdBy);
 }
