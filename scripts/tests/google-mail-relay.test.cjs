@@ -18,7 +18,9 @@ function harness(secret = "a".repeat(64)) {
       sendEmail(message) { sent.push(message); }
     },
     Utilities: {
-      getUuid() { return "a1b2c3d4-ffff-eeee-1234-000000000000"; }
+      getUuid() { return "a1b2c3d4-ffff-eeee-1234-000000000000"; },
+      base64Decode(value) { return Buffer.from(value,"base64"); },
+      newBlob(bytes,mime,name) { return {bytes,mime,name}; }
     },
     ContentService: {
       MimeType: { TEXT: "text/plain" },
@@ -119,4 +121,17 @@ test("patient notification uses fixed, non-sensitive HTML and no code", () => {
   assert.match(h.sent[0].subject, /PulseOS demo notification/);
   assert.match(h.sent[0].htmlBody, /No clinical information is included/);
   assert.doesNotMatch(h.sent[0].htmlBody, /123456/);
+});
+
+test("appointment QR notice requires a valid authorized payload",()=>{
+  const h=harness();
+  const payload={relayKey:"a".repeat(64),email:"patient@example.test",kind:"appointment",code:"",
+    doctor:"demo-doctor",visitType:"CONSULTATION",stage:"SCHEDULED",scheduledAt:"2026-11-15T10:00:00Z",
+    checkinUrl:"https://pulseos.example/patient/checkin?appointment=12345678-1234-1234-1234-123456789abc",
+    qrBase64:Buffer.from("a".repeat(200)).toString("base64")};
+  assert.equal(h.post(payload),"OK");
+  assert.match(h.sent[0].htmlBody,/cid:pulseos-qr/);
+  assert.match(h.sent[0].body,/demo-doctor/);
+  assert.ok(h.sent[0].inlineImages["pulseos-qr"]);
+  assert.equal(h.post({...payload,doctor:"<script>"}),"INVALID");
 });

@@ -11,7 +11,7 @@
 function doPost(e) {
   try {
     const request = e && e.postData && e.postData.contents;
-    if (!request || request.length > 4096) return text_("INVALID");
+    if (!request || request.length > 45000) return text_("INVALID");
 
     const payload = JSON.parse(request);
     const secret = PropertiesService.getScriptProperties()
@@ -26,12 +26,38 @@ function doPost(e) {
     const kind = payload.kind === undefined ? "signup" : payload.kind;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient) ||
         recipient.length > 254 ||
-        (kind !== "patient" && !/^[0-9]{6}$/.test(code)) ||
-        (kind === "patient" && code !== "") ||
-        (kind !== "signup" && kind !== "reset" && kind !== "patient")) {
+        (kind !== "patient" && kind !== "appointment" && !/^[0-9]{6}$/.test(code)) ||
+        ((kind === "patient" || kind === "appointment") && code !== "") ||
+        (kind !== "signup" && kind !== "reset" && kind !== "patient" && kind !== "appointment")) {
       return text_("INVALID");
     }
 
+    if (kind === "appointment") {
+      if (!/^[a-z0-9_.-]{1,80}$/.test(payload.doctor || "") ||
+          !/^[A-Z_]{1,40}$/.test(payload.visitType || "") ||
+          !/^[A-Z_]{1,24}$/.test(payload.stage || "") ||
+          !/^20[0-9]{2}-[0-9T:.Z-]{10,40}$/.test(payload.scheduledAt || "") ||
+          !/^https:\/\/[^\s<>"]+\/patient\/checkin\?appointment=[0-9a-f-]{36}$/.test(payload.checkinUrl || "") ||
+          !/^[A-Za-z0-9+/=]{100,40000}$/.test(payload.qrBase64 || ""))return text_("INVALID");
+      const png=Utilities.base64Decode(payload.qrBase64);
+      if(png.length>30000)return text_("INVALID");
+      const blob=Utilities.newBlob(png,"image/png","pulseos-checkin.png");
+      MailApp.sendEmail({
+        to: recipient, subject: "PulseOS demo appointment · "+payload.stage.replace(/_/g," "),
+        body: ["Fictional PulseOS appointment", "Assigned clinician: "+payload.doctor,
+          "Scheduled: "+payload.scheduledAt,"Visit: "+payload.visitType,"Status: "+payload.stage,
+          "Scan the attached QR or open: "+payload.checkinUrl,
+          "You must sign in with your verified patient account to confirm."].join("\n"),
+        htmlBody: '<div style="font-family:Arial;padding:24px;background:#f7f6ef">' +
+          '<h1>PulseOS appointment</h1><p>Assigned clinician: '+payload.doctor+'</p>'+
+          '<p>Scheduled: '+payload.scheduledAt+'</p><p>Status: '+payload.stage+'</p>'+
+          '<p><a href="'+payload.checkinUrl+'">Open patient check-in</a></p>'+
+          '<img src="cid:pulseos-qr" alt="Appointment QR" width="240" height="240">' +
+          '<p>Sign in as the verified patient. Fictional records only.</p></div>',
+        inlineImages: {"pulseos-qr":blob},name:"PulseOS"
+      });
+      return text_("OK");
+    }
     const isReset = kind === "reset";
     const isPatient = kind === "patient";
     // Each request gets a non-sensitive reference so Gmail does not thread
