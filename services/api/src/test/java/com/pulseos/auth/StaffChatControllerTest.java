@@ -18,6 +18,7 @@ class StaffChatControllerTest {
     when(jwt.getSubject()).thenReturn("doctor");
     var staff=mock(StaffAccount.class);
     when(staff.isEnabled()).thenReturn(true);
+    when(staff.getRole()).thenReturn("CLINICIAN");
     when(staff.getUsername()).thenReturn("doctor");
     when(accounts.findByUsername("doctor")).thenReturn(Optional.of(staff));
   }
@@ -49,6 +50,7 @@ class StaffChatControllerTest {
     authenticate();
     var other=mock(StaffAccount.class);
     when(other.isEnabled()).thenReturn(true);
+    when(other.getRole()).thenReturn("ADMIN");
     when(accounts.findByUsername("supervisor")).thenReturn(Optional.of(other));
     when(messages.saveAndFlush(any())).thenAnswer(call->call.getArgument(0));
     var response=controller.send(jwt,new StaffChatController.SendRequest("SUPERVISOR","Hello there"));

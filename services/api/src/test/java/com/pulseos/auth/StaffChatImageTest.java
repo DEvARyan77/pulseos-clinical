@@ -15,6 +15,7 @@ class StaffChatImageTest {
     Jwt jwt=mock(Jwt.class);when(jwt.getSubject()).thenReturn("doctor");
     StaffAccount user=mock(StaffAccount.class);
     when(user.getUsername()).thenReturn("doctor");when(user.isEnabled()).thenReturn(true);
+    when(user.getRole()).thenReturn("CLINICIAN");
     when(accounts.findByUsername("doctor")).thenReturn(Optional.of(user));
     UUID id=UUID.randomUUID();
     StaffMessage item=new StaffMessage("someone","other","demo");

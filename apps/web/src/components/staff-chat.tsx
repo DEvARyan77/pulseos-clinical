@@ -6,7 +6,7 @@ import StaffNavbar from "./staff-navbar";
 import styles from "./staff-chat.module.css";
 
 type Contact={username:string;role:string};
-type Message={id:string;sender:string;recipient:string;content:string;createdAt:string;readAt:string|null};
+type Message={id:string;sender:string;recipient:string;content:string;imageAttached:boolean;createdAt:string;readAt:string|null};
 async function json<T>(url:string,options?:RequestInit):Promise<T>{
  const response=await fetch(url,{...options,cache:"no-store"});
  const data=await response.json() as T&{error?:string};
