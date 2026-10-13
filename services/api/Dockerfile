@@ -3,7 +3,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn -B dependency:go-offline
 COPY src ./src
-RUN mvn -B -DskipTests package
+RUN mvn -B verify
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app

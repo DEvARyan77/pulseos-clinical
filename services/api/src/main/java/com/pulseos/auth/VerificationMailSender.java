@@ -7,6 +7,8 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -21,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Service
 public class VerificationMailSender {
+    private static final Logger log = LoggerFactory.getLogger(VerificationMailSender.class);
     private final String provider;
     private final String from;
     private final String resendApiKey;
@@ -114,8 +117,19 @@ public class VerificationMailSender {
                         .POST(HttpRequest.BodyPublishers.ofString(payload))
                         .build();
                     HttpResponse<String> result = client.send(request, HttpResponse.BodyHandlers.ofString());
-                    if (result.statusCode() != 200 || !"OK".equals(result.body().trim())) {
-                        throw new IllegalStateException("Apps Script mail relay failed");
+                    if (result.statusCode() != 200) {
+                        log.warn("Apps Script relay HTTP status={}", result.statusCode());
+                        throw new IllegalStateException("Apps Script relay HTTP failure");
+                    }
+                    if (!"OK".equals(result.body().trim())) {
+                        String category = switch (result.body().trim()) {
+                            case "DENIED" -> "shared_key_rejected";
+                            case "INVALID" -> "invalid_delivery_request";
+                            case "ERROR" -> "script_execution_error";
+                            default -> "unexpected_script_response";
+                        };
+                        log.warn("Apps Script relay rejected delivery category={}", category);
+                        throw new IllegalStateException("Apps Script relay failed");
                     }
                 }
                 case "resend" -> {
@@ -129,13 +143,21 @@ public class VerificationMailSender {
                         .POST(HttpRequest.BodyPublishers.ofString(payload))
                         .build();
                     HttpResponse<String> result = client.send(request, HttpResponse.BodyHandlers.ofString());
-                    if (result.statusCode() < 200 || result.statusCode() >= 300)
+                    if (result.statusCode() < 200 || result.statusCode() >= 300) {
+                        log.warn("HTTPS mail provider HTTP status={}", result.statusCode());
                         throw new IllegalStateException("Email provider rejected the message");
+                    }
                 }
                 default -> throw new IllegalStateException("Email delivery provider is not enabled");
             }
         } catch (Exception exception) {
             if (exception instanceof InterruptedException) Thread.currentThread().interrupt();
+            String safeProvider = switch (provider.toLowerCase(java.util.Locale.ROOT)) {
+                case "smtp", "resend", "google-script" -> provider.toLowerCase(java.util.Locale.ROOT);
+                default -> "unknown";
+            };
+            log.warn("Verification mail failed provider={} category={}",
+                safeProvider, exception.getClass().getSimpleName());
             // Do not expose SMTP/API credential details, email contents or OTP in errors.
             throw new ResponseStatusException(
                 HttpStatus.SERVICE_UNAVAILABLE,

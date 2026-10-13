@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
       signal: AbortSignal.timeout(90000),
     });
-    const body = await upstream.json().catch(() => ({})) as { error?: string };
+    const body = await upstream.json().catch(() => ({})) as { error?: string; code?: string };
     if (upstream.status === 202) {
       return NextResponse.json({ message: "Verification code sent to your email." }, {
         status: 202, headers: { "Cache-Control": "no-store" }
@@ -49,11 +49,17 @@ export async function POST(request: NextRequest) {
                   upstream.status === 429 ? "Please wait before requesting another code." :
                   upstream.status === 403 ? "Registration is closed." :
                   upstream.status === 400 ? "Check the username, email and password (8–128 characters)." :
-                  upstream.status === 503 ? "Email delivery is not configured or unavailable on the PulseOS API." :
+                  upstream.status === 503
+                    ? body.code === "REGISTRATION_STORAGE_UNAVAILABLE"
+                      ? "Registration storage is temporarily unavailable. Please retry."
+                      : body.code === "MAIL_DELIVERY_FAILED"
+                        ? "The email provider failed to send your code. Check the mail provider configuration and logs."
+                        : "Email verification is not configured or currently unavailable." :
                   upstream.status === 502 || upstream.status === 504 ? "The API gateway is still starting or unreachable. Retry after the API is healthy." :
-                  "The API encountered a server error. Check Render API logs.";
+                  upstream.status === 500 ? "The backend encountered an internal error. Check the PulseOS API logs." :
+                  "Registration was rejected by the server.";
     return NextResponse.json({ error },
-      { status: [400,403,409,429].includes(upstream.status) ? upstream.status : 503,
+      { status: [400,403,409,429,500,502,503,504].includes(upstream.status) ? upstream.status : 502,
         headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Registration service error:", error instanceof Error ? error.name : "unknown");

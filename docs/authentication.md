@@ -49,6 +49,14 @@ On free Render instances, Spring Boot may take over two minutes to start after s
 
 A ready API **does not mean that email delivery is configured**. If the request then returns an email-delivery error, set up an SMTP connection that works in your hosting environment, Google Apps Script HTTPS relay, or an HTTPS email provider. Never use patient information for registration tests.
 
+### Registration failure diagnostics
+
+Signup failures are categorized without logging submitted passwords, OTP values, email addresses, or private mail-provider URLs. The Spring Boot API returns `MAIL_DELIVERY_FAILED` (503), `REGISTRATION_STORAGE_UNAVAILABLE` (503), or `REGISTRATION_INTERNAL_ERROR` (500). The Next.js proxy preserves these status codes instead of incorrectly turning all server problems into the same 503.
+
+For a Google Apps Script relay rejection, check **pulseos-api → Logs**. Safe entries can identify `shared_key_rejected` (the key differs between Render and Script Properties), `script_execution_error` (check Apps Script → Executions), `invalid_delivery_request`, or an upstream HTTP response. These status labels never include the email address, verification code, relay secret, or full provider response.
+
+**Operational check:** Ensure `PULSEOS_EMAIL_PROVIDER=google-script`, `PULSEOS_EMAIL_FROM` is the sender address, `PULSEOS_GOOGLE_SCRIPT_URL` is the deployed `/exec` URL, and `PULSEOS_GOOGLE_SCRIPT_KEY` matches the Apps Script property `PULSEOS_MAIL_RELAY_KEY`. Do not paste those secrets into chats or GitHub.
+
 ## Troubleshooting
 
 - "Email delivery is not configured" (503): configure a supported email provider and valid sender credentials.
