@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Users, UserCheck, UserX, RefreshCw } from "lucide-react";
+import { ShieldCheck, Users, UserCheck, UserX, RefreshCw } from "lucide-react";
 import StaffNavbar from "./staff-navbar";
 import styles from "./admin-dashboard.module.css";
 
