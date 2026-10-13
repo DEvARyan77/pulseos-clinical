@@ -14,7 +14,8 @@ class CurrentRoleAuthorizationTest {
     private JwtAuthenticationToken token(String username) {
         return new JwtAuthenticationToken(Jwt.withTokenValue("example-token")
             .header("alg", "HS256").subject(username).claim("roles", java.util.List.of("CLINICIAN"))
-            .build());
+            .build(), java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_CLINICIAN")));
     }
 
     @Test
