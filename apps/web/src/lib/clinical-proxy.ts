@@ -17,11 +17,12 @@ export async function clinicalProxy(request: NextRequest, path: string, method: 
   let body: string|undefined;
   if(method !== "GET"){
     const len=Number(request.headers.get("content-length")??0);
-    if(len>12000)return NextResponse.json({error:"Request too large"},{status:413});
+    const limit=path==="/api/v1/staff-chat/messages"&&method==="POST"?400000:12000;
+    if(len>limit)return NextResponse.json({error:"Request too large"},{status:413});
     try {
       const parsed=await request.json();
       body=JSON.stringify(parsed);
-      if(body.length>12000)return NextResponse.json({error:"Request too large"},{status:413});
+      if(body.length>limit)return NextResponse.json({error:"Request too large"},{status:413});
     }catch{return NextResponse.json({error:"Invalid JSON"},{status:400});}
   }
   try {

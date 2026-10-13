@@ -1,5 +1,6 @@
 "use client";
 import {FormEvent,useCallback,useEffect,useMemo,useRef,useState} from "react";
+import Image from "next/image";
 import {MessageCircle,RefreshCw,Search,Send,ShieldCheck,UserRound} from "lucide-react";
 import StaffNavbar from "./staff-navbar";
 import styles from "./staff-chat.module.css";
@@ -17,6 +18,7 @@ export default function StaffChat({username,role,initialTarget}:{username:string
  const [messages,setMessages]=useState<Message[]>([]);
  const [target,setTarget]=useState<string|null>(null);
  const [draft,setDraft]=useState("");
+ const [image,setImage]=useState<{mimeType:string;base64:string;preview:string}|null>(null);
  const [directoryQuery,setDirectoryQuery]=useState("");
  const readAttempted=useRef(new Set<string>());
  const [busy,setBusy]=useState(false);
@@ -56,16 +58,31 @@ export default function StaffChat({username,role,initialTarget}:{username:string
      if(results.some(result=>result.status==="rejected"))setError("Some messages could not be marked read.");
    });
  },[messages,target,username,reload]);
+ function pickImage(file:File|null){
+   if(!file)return;
+   if(!["image/png","image/jpeg","image/webp"].includes(file.type)||file.size>262144||file.size===0){
+     setError("Choose a PNG, JPEG or WebP demo image no larger than 256 KB.");return;
+   }
+   const reader=new FileReader();
+   reader.onload=()=>{
+     if(typeof reader.result!=="string")return;
+     const preview=reader.result;
+     const base64=preview.split(",")[1];
+     if(base64){setImage({mimeType:file.type,base64,preview});setError("");}
+   };
+   reader.onerror=()=>setError("Unable to read image.");
+   reader.readAsDataURL(file);
+ }
  async function send(event:FormEvent<HTMLFormElement>){
    event.preventDefault();
-   if(!target||!draft.trim()||busy)return;
+   if(!target||(!draft.trim()&&!image)||busy)return;
    setBusy(true);setError("");
    try {
      await json<Message>("/api/staff-chat/messages",{
        method:"POST",headers:{"Content-Type":"application/json"},
-       body:JSON.stringify({to:target,content:draft.trim()})
+       body:JSON.stringify({to:target,content:draft.trim(),...(image?{imageBase64:image.base64,imageMimeType:image.mimeType}:{})})
      });
-     setDraft("");await reload();
+     setDraft("");setImage(null);await reload();
    }catch(cause){setError(cause instanceof Error?cause.message:"Message failed");}
    finally{setBusy(false);}
  }
@@ -94,17 +111,28 @@ export default function StaffChat({username,role,initialTarget}:{username:string
            <div className={styles.history} aria-label="Message history" aria-live="polite">
              {!visible.length&&<p className={styles.empty}>No messages yet. Start a fictional-data conversation.</p>}
              {visible.map(m=><div key={m.id} className={m.sender===username?styles.outgoing:styles.incoming}>
-                <p>{m.content}</p>
+                {m.content&&<p>{m.content}</p>}
+                {m.imageAttached&&<Image unoptimized className={styles.chatImage}
+                  src={`/api/staff-chat/messages/${m.id}/image`} alt="Private demo image attachment"
+                  width={300} height={200}/>}
                 <div><time>{new Date(m.createdAt).toLocaleString()}</time>
                 </div>
              </div>)}
            </div>
            <form className={styles.compose} onSubmit={send}>
              <label htmlFor="chat-message">New message (demo only)</label>
-             <textarea id="chat-message" maxLength={1200} rows={3} placeholder="Write a short message to your colleague…"
-               value={draft} onChange={e=>setDraft(e.target.value)} required/>
+             <textarea id="chat-message" maxLength={1200} rows={3} placeholder="Write a message or attach a fictional image…"
+               value={draft} onChange={e=>setDraft(e.target.value)}/>
+             <label className={styles.imagePicker}>Attach a demo image (PNG, JPEG or WebP, max 256 KB)
+               <input type="file" accept="image/png,image/jpeg,image/webp" aria-label="Attach a demo image"
+                 onChange={e=>{pickImage(e.target.files?.[0]??null);e.target.value="";}}/>
+             </label>
+             {image&&<div className={styles.preview}>
+               <Image unoptimized src={image.preview} alt="Selected demo image" width={100} height={70}/>
+               <button type="button" onClick={()=>setImage(null)}>Remove image</button>
+             </div>}
              <div><small>{draft.length}/1200 · Never share real patient data</small>
-               <button type="submit" disabled={busy||!draft.trim()}><Send size={16}/>{busy?"Sending…":"Send message"}</button></div>
+               <button type="submit" disabled={busy||(!draft.trim()&&!image)}><Send size={16}/>{busy?"Sending…":"Send message"}</button></div>
            </form></>:<div className={styles.empty}>Select an available staff member to begin.</div>}
        </section>
      </div>
