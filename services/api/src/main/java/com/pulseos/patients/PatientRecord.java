@@ -11,6 +11,7 @@ public class PatientRecord {
   @Id @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
   @Column(nullable = false, length = 80) private String owner;
+  @Column(name="contact_email",length=254) private String contactEmail;
   @Column(name = "full_name", nullable = false, length = 120) private String fullName;
   @Column(nullable = false) private int age;
   @Column(nullable = false, length = 32) private String gender;
@@ -35,10 +36,13 @@ public class PatientRecord {
     bp = input.bp().trim(); heartRate = input.heartRate(); oxygen = input.oxygen();
     temperature = input.temperature().trim(); allergies = input.allergies().trim();
     diagnoses = input.diagnoses().trim(); medications = input.medications().trim();
+    contactEmail = input.contactEmail() == null || input.contactEmail().isBlank()
+      ? null : input.contactEmail().strip().toLowerCase(java.util.Locale.ROOT);
     updatedAt = Instant.now();
   }
   public UUID getId(){return id;}
   public String getOwner(){return owner;}
+  public String getContactEmail(){return contactEmail;}
   public String getFullName(){return fullName;}
   public int getAge(){return age;}
   public String getGender(){return gender;}

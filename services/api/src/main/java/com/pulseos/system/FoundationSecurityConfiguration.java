@@ -29,6 +29,16 @@ public class FoundationSecurityConfiguration {
             "/api/v1/auth/resend", "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password").permitAll()
         .requestMatchers(HttpMethod.GET,"/api/v1/auth/registration-status").permitAll()
+        .requestMatchers("/api/v1/staff-chat/**")
+          .access((authentication, context) -> {
+            var token = authentication.get();
+            if (!(token instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwt)
+                || !token.isAuthenticated())
+              return new org.springframework.security.authorization.AuthorizationDecision(false);
+            return new org.springframework.security.authorization.AuthorizationDecision(
+              staffAccounts.findByUsername(jwt.getToken().getSubject())
+                .filter(com.pulseos.auth.StaffAccount::isEnabled).isPresent());
+          })
         .requestMatchers("/api/v1/admin/**")
           .access(new CurrentRoleAuthorization(staffAccounts, StaffRole.ADMIN, legacyUsername))
         .requestMatchers(HttpMethod.GET,"/api/v1/auth/me").authenticated()

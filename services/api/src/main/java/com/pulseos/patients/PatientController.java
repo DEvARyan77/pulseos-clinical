@@ -33,7 +33,8 @@ public class PatientController {
     @NotNull @Size(max=16) String temperature,
     @NotNull @Size(max=500) String allergies,
     @NotNull @Size(max=500) String diagnoses,
-    @NotNull @Size(max=500) String medications
+    @NotNull @Size(max=500) String medications,
+    @Email @Size(max=254) String contactEmail
   ) {}
   public record NoteInput(@NotBlank @Size(max=4000) String content) {}
   private PatientRecord owned(UUID id,String owner){

@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { HeartPulse, ShieldCheck, Users, UserCheck, UserX, RefreshCw } from "lucide-react";
+import { HeartPulse, ShieldCheck, Users, UserCheck, UserX, RefreshCw, MessageCircle } from "lucide-react";
 import ThemeSwitcher from "./theme-switcher";
 import SignOutButton from "./sign-out-button";
 import styles from "./admin-dashboard.module.css";
@@ -80,6 +81,7 @@ export default function AdminDashboard({ username }: { username: string }) {
         <div className={styles.logo}><HeartPulse size={25} /><span>Pulse<b>OS</b></span></div>
         <div className={styles.headerRight}>
           <span className={styles.adminTag}><ShieldCheck size={14} /> ADMIN PORTAL</span>
+          <Link href="/messages" className={styles.chatLink}><MessageCircle size={15}/> Staff chat</Link>
           <ThemeSwitcher /><SignOutButton />
         </div>
       </header>

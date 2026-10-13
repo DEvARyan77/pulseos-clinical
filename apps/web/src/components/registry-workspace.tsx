@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import {FormEvent,useCallback,useEffect,useState} from "react";
-import {Activity,CalendarDays,ClipboardList,FileText,HeartPulse,History,Plus,Search,ShieldCheck,UserRound} from "lucide-react";
+import {Activity,CalendarDays,ClipboardList,FileText,HeartPulse,History,Plus,Search,ShieldCheck,UserRound,Mail,MessageCircle,Bell} from "lucide-react";
 import ThemeSwitcher from "./theme-switcher";
 import SignOutButton from "./sign-out-button";
 import styles from "./registry-workspace.module.css";
@@ -10,13 +10,14 @@ type Status="WAITING"|"IN_CARE"|"COMPLETED";
 type PatientInput={
  fullName:string;age:number;gender:string;reason:string;room:string;status:Status;
  bp:string;heartRate:number|null;oxygen:number|null;temperature:string;
- allergies:string;diagnoses:string;medications:string;
+ allergies:string;diagnoses:string;medications:string;contactEmail:string|null;
 };
 type Patient=PatientInput&{id:string;createdAt:string;updatedAt:string;version:number};
 type Note={id:string;content:string;createdAt:string;owner:string};
 type Audit={id:string;action:string;actor:string;happenedAt:string};
-type Tab="Overview"|"Notes"|"History";
-const blank:PatientInput={fullName:"",age:35,gender:"Unspecified",reason:"General consultation",room:"Unassigned",status:"WAITING",bp:"—",heartRate:null,oxygen:null,temperature:"—",allergies:"",diagnoses:"",medications:""};
+type Tab="Overview"|"Notes"|"History"|"Notifications";
+type Notification={id:string;channel:"EMAIL"|"IN_APP";status:string;message:string;createdAt:string};
+const blank:PatientInput={fullName:"",age:35,gender:"Unspecified",reason:"General consultation",room:"Unassigned",status:"WAITING",bp:"—",heartRate:null,oxygen:null,temperature:"—",allergies:"",diagnoses:"",medications:"",contactEmail:null};
 const fields:[keyof PatientInput,string,number][]=[
  ["fullName","Name (fictional only)",120],["gender","Gender",32],["reason","Visit reason",240],
  ["room","Room / location",32],["bp","Blood pressure",16],["temperature","Temperature",16],
@@ -34,11 +35,14 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
  const [records,setRecords]=useState<Patient[]>([]);
  const [selected,setSelected]=useState<string|null>(null);
  const [search,setSearch]=useState("");
+ const [filterStatus,setFilterStatus]=useState<"ALL"|Status>("ALL");
+ const [sortBy,setSortBy]=useState<"recent"|"name"|"oldest">("recent");
  const [tab,setTab]=useState<Tab>("Overview");
  const [mode,setMode]=useState<"view"|"new"|"edit">("view");
  const [form,setForm]=useState<PatientInput>({...blank});
  const [notes,setNotes]=useState<Note[]>([]);
  const [history,setHistory]=useState<Audit[]>([]);
+ const [notifications,setNotifications]=useState<Notification[]>([]);
  const [noteText,setNoteText]=useState("");
  const [busy,setBusy]=useState(false);
  const [loading,setLoading]=useState(true);
@@ -62,8 +66,9 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
   let alive=true;
   Promise.all([
    jsonRequest<Note[]>(`/api/patients/${selected}/notes`),
-   jsonRequest<Audit[]>(`/api/patients/${selected}/history`)
-  ]).then(([n,h])=>{if(alive){setNotes(n);setHistory(h);}})
+   jsonRequest<Audit[]>(`/api/patients/${selected}/history`),
+   jsonRequest<Notification[]>(`/api/patients/${selected}/notifications`)
+  ]).then(([n,h,items])=>{if(alive){setNotes(n);setHistory(h);setNotifications(items);}})
    .catch(cause=>{if(alive)setError(cause instanceof Error?cause.message:"Cannot load visit timeline");});
   return()=>{alive=false;};
  },[selected]);
@@ -100,11 +105,31 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
   }catch(cause){setError(cause instanceof Error?cause.message:"Cannot save note");}
   finally{setBusy(false);}
  }
- const shown=records.filter(p=>(p.fullName+" "+p.reason+" "+p.room).toLowerCase().includes(search.trim().toLowerCase()));
+ async function sendNotification(channel:"EMAIL"|"IN_APP"){
+  if(!active)return;
+  setBusy(true);setError("");setMessage("");
+  try{
+    await jsonRequest<Notification>(`/api/patients/${active.id}/notifications`,{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({channel})
+    });
+    const items=await jsonRequest<Notification[]>(`/api/patients/${active.id}/notifications`);
+    setNotifications(items);
+    setTab("Notifications");
+    setMessage(channel==="EMAIL"?"Demo email accepted by provider. Inbox delivery is not guaranteed.":"In-app demo notification recorded.");
+  }catch(cause){setError(cause instanceof Error?cause.message:"Notification could not be created");}
+  finally{setBusy(false);}
+ }
+ const shown=records.filter(p=>{
+  const q=search.trim().toLowerCase();
+  const match=[p.fullName,p.reason,p.room,p.status,p.contactEmail??""].join(" ").toLowerCase().includes(q);
+  return match&&(filterStatus==="ALL"||p.status===filterStatus);
+ }).sort((a,b)=>sortBy==="name"?a.fullName.localeCompare(b.fullName):
+     sortBy==="oldest"?a.updatedAt.localeCompare(b.updatedAt):b.updatedAt.localeCompare(a.updatedAt));
  return <main className="app">
    <header className="topbar">
     <div className="logo"><HeartPulse size={25}/><span>Pulse<b>OS</b></span></div>
-    <nav className="topnav" aria-label="Navigation"><Link href="/">Patient registry</Link><Link href="/appointments">Appointments</Link></nav>
+    <nav className="topnav" aria-label="Navigation"><Link href="/">Patient registry</Link><Link href="/appointments">Appointments</Link><Link href="/messages">Staff chat</Link></nav>
     <div className="topactions"><span className="demo-label"><ShieldCheck size={13}/> TEST RECORDS ONLY</span><ThemeSwitcher/>
       <span className="api-state"><i className={apiStatus==="connected"?"connected":""}/> API {apiStatus}</span><SignOutButton/></div>
    </header>
@@ -112,7 +137,14 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
    <div className="columns">
     <aside className={mobileQueue?"queue open":"queue"} aria-label="Patient registry">
      <div className="queue-heading"><div><h2>Patient registry <small>{records.length}</small></h2><p>Account-scoped records</p></div><UserRound size={18}/></div>
-     <label className="search-field"><Search size={16}/><input type="search" aria-label="Search patients" placeholder="Search patients…" value={search} onChange={e=>setSearch(e.target.value)}/></label>
+     <label className="search-field"><Search size={16}/><input type="search" aria-label="Search patients" placeholder="Search patients…" value={search} onChange={e=>setSearch(e.target.value)}/></label><div className={styles.filterBar}>
+      <label>Status<select aria-label="Filter patients by status" value={filterStatus} onChange={e=>setFilterStatus(e.target.value as "ALL"|Status)}>
+       <option value="ALL">All statuses</option>{Object.entries(statuses).map(([id,label])=><option key={id} value={id}>{label}</option>)}
+      </select></label>
+      <label>Sort<select aria-label="Sort patients" value={sortBy} onChange={e=>setSortBy(e.target.value as "recent"|"oldest"|"name")}>
+       <option value="recent">Recently updated</option><option value="name">Name A–Z</option><option value="oldest">Least recent</option>
+      </select></label>
+     </div>
      <div className={styles.queueActions}><button type="button" onClick={startNew}><Plus size={16}/> Add patient</button><Link href="/appointments"><CalendarDays size={15}/> Appointments</Link></div>
      <div className="queue-rows">
       {loading?<p className="empty">Loading records…</p>:shown.length===0?<p className="empty">{records.length?"No matching records.":"No patients yet. Add a fictional patient to begin."}</p>:
@@ -133,6 +165,10 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
            <input type="text" value={String(form[key]??"")} required={["fullName","gender","reason","room"].includes(key)}
             maxLength={max} onChange={e=>editValue(key,e.target.value)}/>
          </label>)}
+         <label>Demo contact email (optional; allowlist required for sending)
+           <input type="email" maxLength={254} value={form.contactEmail??""}
+             placeholder="approved-demo@example.com" onChange={e=>setForm(old=>({...old,contactEmail:e.target.value||null}))}/>
+         </label>
          <label>Age <input type="number" min="0" max="120" value={form.age} onChange={e=>editValue("age",e.target.value)} required/></label>
          <label>Heart rate (bpm)<input type="number" min="0" max="250" value={form.heartRate??""} onChange={e=>editValue("heartRate",e.target.value)}/></label>
          <label>Oxygen saturation (%)<input type="number" min="0" max="100" value={form.oxygen??""} onChange={e=>editValue("oxygen",e.target.value)}/></label>
@@ -146,7 +182,7 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
         <div className="patient-info"><span className="eyebrow">ACCOUNT PATIENT RECORD</span><h1>{active.fullName}</h1><p>{active.age} years · {active.gender}</p><div className="patient-chips"><span>{statuses[active.status]}</span><span>{active.reason}</span></div></div>
         <button type="button" className={styles.primarySmall} onClick={startEdit}>Edit patient</button>
        </div>
-       <nav className="chart-tabs" aria-label="Patient sections">{(["Overview","Notes","History"] as const).map(t=><button type="button" key={t} className={tab===t?"current":""} onClick={()=>setTab(t)}>{t}</button>)}</nav>
+       <nav className="chart-tabs" aria-label="Patient sections">{(["Overview","Notes","History","Notifications"] as const).map(t=><button type="button" key={t} className={tab===t?"current":""} onClick={()=>setTab(t)}>{t}</button>)}</nav>
        {tab==="Overview"&&<>
         <div className="section-title"><h2>Clinical overview</h2><span>Last edited {readable(active.updatedAt)}</span></div>
         <div className="overview-grid">
@@ -155,6 +191,10 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
          <article className="info-card"><div className="card-title"><ClipboardList size={17}/><h3>Diagnoses</h3></div><p className={styles.cardText}>{active.diagnoses||"No entries"}</p></article>
          <article className="info-card"><div className="card-title"><FileText size={17}/><h3>Medications</h3></div><p className={styles.cardText}>{active.medications||"No entries"}</p></article>
         </div>
+        <article className={styles.contactCard}><div><Mail size={17}/><strong>Demo contact</strong>
+          <p>{active.contactEmail||"No contact email provided"}</p><small>Outbound email requires explicit demo allowlisting.</small></div>
+          <button disabled={!active.contactEmail||busy} type="button" onClick={()=>void sendNotification("EMAIL")}>Send demo email</button>
+        </article>
         <div className="section-title"><h2>Patient activity</h2><span>{history.length} recorded changes</span></div>
         <div className={styles.panel}>{history.length?history.slice(0,5).map(h=><div className={styles.event} key={h.id}><strong>{h.action.replaceAll("_"," ")}</strong><small>{readable(h.happenedAt)} · {h.actor}</small></div>):<p className={styles.helper}>No activity yet.</p>}</div>
        </>}
@@ -169,6 +209,20 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
        {tab==="History"&&<section className={styles.panel}><h2>Audit history</h2><p className={styles.helper}>Actions are timestamped and attributed to the signed-in staff account.</p>
         {history.map(h=><div className={styles.event} key={h.id}><strong>{h.action.replaceAll("_"," ")}</strong><small>{readable(h.happenedAt)} · {h.actor}</small></div>)}
        </section>}
+       {tab==="Notifications"&&<section className={styles.panel}>
+         <h2><Bell size={18}/> Patient notifications</h2>
+         <p className={styles.helper}>In-app notifications are recorded within the staff demo. Email sends a fixed, non-clinical message only to an approved demo address.</p>
+         <div className={styles.notificationActions}>
+           <button type="button" disabled={busy} onClick={()=>void sendNotification("IN_APP")}>Create in-app notification</button>
+           <button type="button" disabled={busy||!active.contactEmail} onClick={()=>void sendNotification("EMAIL")}>Send demo email</button>
+         </div>
+         {notifications.map(n=><article className={styles.event} key={n.id}>
+           <strong>{n.channel==="EMAIL"?"Email":"In-app"} · {n.status}</strong>
+           <p className={styles.helper}>{n.message}</p>
+           <small>{readable(n.createdAt)}</small>
+         </article>)}
+         {!notifications.length&&<p className={styles.helper}>No notifications have been recorded for this patient.</p>}
+       </section>}
       </>:<div className={styles.emptyState}><UserRound size={32}/><h2>No patient selected</h2><p>Add a fictional patient to start creating records and tracking visits.</p><button type="button" className={styles.primary} onClick={startNew}>Add first patient</button></div>}
     </section>
     <aside className="sidebar"><div className="sidebar-tabs"><span className="active"><History size={15}/> Activity</span></div>
@@ -177,6 +231,7 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
      </div>
      <div className="side-section"><div className="side-title"><h2>Quick navigation</h2></div><div className={styles.links}>
        <Link href="/appointments"><CalendarDays size={16}/> Book an appointment</Link>
+       <Link href="/messages"><MessageCircle size={16}/> Chat with staff or supervisor</Link>
        <button type="button" onClick={()=>{if(active){setMode("view");setTab("Notes");}}} disabled={!active}><FileText size={16}/> Visit notes</button>
        <button type="button" onClick={()=>{if(active){setMode("view");setTab("History");}}} disabled={!active}><History size={16}/> View audit trail</button>
      </div></div>

@@ -25,21 +25,25 @@ function doPost(e) {
     // Older backend versions omit kind. Retain signup compatibility.
     const kind = payload.kind === undefined ? "signup" : payload.kind;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient) ||
-        recipient.length > 254 || !/^[0-9]{6}$/.test(code) ||
-        (kind !== "signup" && kind !== "reset")) {
+        recipient.length > 254 ||
+        (kind !== "patient" && !/^[0-9]{6}$/.test(code)) ||
+        (kind === "patient" && code !== "") ||
+        (kind !== "signup" && kind !== "reset" && kind !== "patient")) {
       return text_("INVALID");
     }
 
     const isReset = kind === "reset";
+    const isPatient = kind === "patient";
     // Each request gets a non-sensitive reference so Gmail does not thread
     // newly generated codes under an older message with the same subject.
     const reference = Utilities.getUuid().slice(0, 8).toUpperCase();
     MailApp.sendEmail({
       to: recipient,
-      subject: (isReset ? "Reset your PulseOS password" : "Verify your PulseOS email") +
+      subject: (isPatient ? "PulseOS demo notification" :
+        isReset ? "Reset your PulseOS password" : "Verify your PulseOS email") +
         " · #" + reference,
-      body: plainText_(code, isReset),
-      htmlBody: html_(code, isReset),
+      body: isPatient ? patientText_() : plainText_(code, isReset),
+      htmlBody: isPatient ? patientHtml_() : html_(code, isReset),
       name: "PulseOS"
     });
     return text_("OK");
@@ -47,6 +51,17 @@ function doPost(e) {
     // Do not log request content, code, recipient or shared secret.
     return text_("ERROR");
   }
+}
+
+function patientText_() {
+  return "PulseOS demo notification\\nYou have a new notification from the fictional-data demonstration. No patient information is included.";
+}
+function patientHtml_() {
+  return '<html><body style="background:#f4f5f3;padding:30px;font-family:Arial,sans-serif">' +
+    '<div style="max-width:520px;margin:auto;background:#fff;padding:30px;border-radius:14px;border-top:8px solid #f4c64d">' +
+    '<h1 style="color:#171b24">Pulse<span style="color:#b48819">OS</span></h1>' +
+    '<h2>New demo notification</h2><p>You have a new notification from the PulseOS fictional-data demonstration.</p>' +
+    '<p style="font-size:12px;color:#777">No clinical information is included. This is an automated test message.</p></div></body></html>';
 }
 
 /** Readable fallback for text-only email clients. */

@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 /** Server-only API gateway: bearer token never reaches client JavaScript. */
-export async function clinicalProxy(request: NextRequest, path: string, method: "GET"|"POST"|"PUT") {
+export async function clinicalProxy(request: NextRequest, path: string, method: "GET"|"POST"|"PUT"|"PATCH") {
   if (process.env.PULSEOS_AUTH_ENABLED !== "true")
     return NextResponse.json({error:"Enable staff authentication to manage records"},{status:503});
   if (method !== "GET") {

@@ -110,3 +110,13 @@ test("deployed relay provides a non-sensitive HTML version marker", () => {
   const h = harness();
   assert.equal(h.context.doGet().message, "PulseOS email relay: styled HTML v4");
 });
+
+test("patient notification uses fixed, non-sensitive HTML and no code", () => {
+  const h = harness();
+  const result = h.post({ relayKey: "a".repeat(64), email: "test@example.test",
+    code: "", kind: "patient" });
+  assert.equal(result, "OK");
+  assert.match(h.sent[0].subject, /PulseOS demo notification/);
+  assert.match(h.sent[0].htmlBody, /No clinical information is included/);
+  assert.doesNotMatch(h.sent[0].htmlBody, /123456/);
+});

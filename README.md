@@ -84,6 +84,14 @@ Replace the example email with the actual verified staff account. If the query r
 
 This is a synthetic portfolio, not a production clinical authorization implementation. Consider a separate audit log, MFA, fine-grained permissions, and stronger approval workflows before any production or regulated use.
 
+## Patient management and staff communications
+
+The clinician registry supports enhanced search, status filtering, sorting, patient profile, visit history and audit events. It also includes account-scoped **demo notification history** and test-only email notifications. Admins and clinicians can exchange internal staff messages at `/messages`.
+
+**Sending patient demo email is disabled by default.** To opt in, configure `PULSEOS_DEMO_EMAIL_ALLOWLIST` as a comma-separated list of approved test inboxes on the API's Render environment. The new Google Apps Script relay must be republished to support the fixed `patient` message purpose. No clinical details are sent. A successful provider response is not proof that an inbox exists or received the email; registered staff still verify ownership with a one-time email code.
+
+See [Patient communications and safety](docs/patient-communications.md). Never enter real patient data in this portfolio application.
+
 ## Security limitations
 
 Email verification checks mailbox access, **not professional licensure or authorization to access real patient information**. There is no MFA, login throttling, complete revocable-session system, medically compliant hosting, or clinical audit certification. Never store protected health information in this portfolio deployment.

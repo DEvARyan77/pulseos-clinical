@@ -80,23 +80,28 @@ public class VerificationMailSender {
     }
 
     public void send(String destination, String code) {
-        sendCode(destination, code, false);
+        sendCode(destination, code, false, false);
     }
 
     public void sendPasswordReset(String destination, String code) {
-        sendCode(destination, code, true);
+        sendCode(destination, code, true, false);
     }
 
-    private void sendCode(String destination, String code, boolean reset) {
+    public void sendPatientNotice(String destination) {
+        sendCode(destination, "", false, true);
+    }
+
+    private void sendCode(String destination, String code, boolean reset, boolean patientNotice) {
         if (from.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Verification email is not configured");
         }
-        String subject = reset ? "Reset your PulseOS password" : "Verify your PulseOS email";
-        String message = (reset ? "Your PulseOS password reset code is: " :
+        String subject = patientNotice ? "PulseOS demo notification" :
+            reset ? "Reset your PulseOS password" : "Verify your PulseOS email";
+        String message = patientNotice ? "You have a new notification from the PulseOS fictional-data demonstration. No patient information is included." : (reset ? "Your PulseOS password reset code is: " :
             "Your PulseOS verification code is: ") + code +
             "\nThis code expires in 10 minutes. If you did not request it, ignore this message." +
             "\nThis portfolio is for synthetic data only.";
-        String html = brandedHtml(code, reset);
+        String html = patientNotice ? patientHtml() : brandedHtml(code, reset);
         try {
             switch (provider.toLowerCase(java.util.Locale.ROOT)) {
                 case "smtp" -> {
@@ -124,7 +129,7 @@ public class VerificationMailSender {
                     }
                     String payload = "{\"relayKey\":" + quote(googleScriptKey) +
                         ",\"email\":" + quote(destination) + ",\"code\":" + quote(code) +
-                        ",\"kind\":" + quote(reset ? "reset" : "signup") + "}";
+                        ",\"kind\":" + quote(patientNotice ? "patient" : reset ? "reset" : "signup") + "}";
                     HttpRequest request = HttpRequest.newBuilder(endpoint)
                         .timeout(Duration.ofSeconds(45))
                         .header("Content-Type", "application/json")
@@ -178,6 +183,16 @@ public class VerificationMailSender {
                 HttpStatus.SERVICE_UNAVAILABLE,
                 "Verification email could not be delivered. Contact the application administrator.");
         }
+    }
+
+    private static String patientHtml() {
+        return "<html><body style=\"font-family:Arial,sans-serif;background:#f4f5f3;padding:30px\">"
+            + "<div style=\"max-width:520px;margin:auto;background:#ffffff;padding:30px;border-radius:14px;border-top:8px solid #f4c64d\">"
+            + "<h1 style=\"color:#171b24\">Pulse<span style=\"color:#b48819\">OS</span></h1>"
+            + "<h2>New demo notification</h2>"
+            + "<p>You have a new notification from the PulseOS fictional-data demonstration.</p>"
+            + "<p style=\"font-size:12px;color:#777\">No patient information is included. This is an automated test-only message.</p>"
+            + "</div></body></html>";
     }
 
     private static String brandedHtml(String code, boolean reset) {

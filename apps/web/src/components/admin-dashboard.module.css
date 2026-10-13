@@ -36,3 +36,5 @@
 .error{color:#cb5b67}.success{color:var(--accent-text)}
 @media(max-width:780px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.adminTag{display:none}.headerRight{gap:7px}.panelTop{align-items:flex-start}.intro{margin-bottom:20px}}
 @media(max-width:440px){.metrics{gap:8px}.metrics article{padding:16px}.metrics strong{font-size:26px}}
+
+.chatLink{display:inline-flex;align-items:center;gap:7px;color:#ffe19a;text-decoration:none;border:1px solid #596571;border-radius:8px;padding:9px 11px;font-size:12px;white-space:nowrap}.chatLink:hover{background:#343944}@media(max-width:540px){.chatLink{font-size:0;padding:9px}.chatLink svg{width:18px;height:18px}}
