@@ -3,6 +3,7 @@ import Link from "next/link";
 import {HeartPulse,UserRound} from "lucide-react";
 import ThemeSwitcher from "./theme-switcher";
 import SignOutButton from "./sign-out-button";
+import ChatAlertBell from "./chat-alert-bell";
 import styles from "./staff-navbar.module.css";
 type Active="patients"|"appointments"|"admin"|"messages"|"profile";
 export default function StaffNavbar({role,active,apiStatus}:{role:"ADMIN"|"CLINICIAN";active:Active;apiStatus?:"connected"|"offline"}){
@@ -18,7 +19,7 @@ export default function StaffNavbar({role,active,apiStatus}:{role:"ADMIN"|"CLINI
     </nav>
     <div className={styles.actions}>
       {apiStatus&&<span className={styles.api}>API {apiStatus}</span>}
-      <ThemeSwitcher/><SignOutButton/>
+      <ChatAlertBell/><ThemeSwitcher/><SignOutButton/>
     </div>
   </header>;
 }
