@@ -1,6 +1,8 @@
 package com.pulseos.appointments;
 
 import com.pulseos.patients.PatientRepository;
+import com.pulseos.patients.PatientRecord;
+import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotBlank;
@@ -27,8 +29,13 @@ public class DemoAppointmentController {
     "DEMO-1001","DEMO-1002","DEMO-1003","DEMO-1004","DEMO-1005","DEMO-1006","DEMO-1007");
   private final DemoAppointmentRepository appointments;
   private final PatientRepository patients;
-  public DemoAppointmentController(DemoAppointmentRepository appointments, PatientRepository patients){
-    this.appointments=appointments;this.patients=patients;
+  private final AppointmentNoticeService notices;
+  @Autowired
+  public DemoAppointmentController(DemoAppointmentRepository appointments,PatientRepository patients,AppointmentNoticeService notices){
+    this.appointments=appointments;this.patients=patients;this.notices=notices;
+  }
+  DemoAppointmentController(DemoAppointmentRepository appointments,PatientRepository patients){
+    this(appointments,patients,null);
   }
   public record CreateAppointmentRequest(@NotBlank String patientId,
      @NotNull @Future Instant scheduledAt,@NotNull DemoAppointment.VisitType visitType){}
@@ -46,22 +53,43 @@ public class DemoAppointmentController {
   @PostMapping
   public ResponseEntity<?> create(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody CreateAppointmentRequest request){
     boolean valid=LEGACY_DEMO_IDS.contains(request.patientId());
+    PatientRecord recipient=null;
     if(!valid){
-      try{valid=patients.findByIdAndOwner(UUID.fromString(request.patientId()),jwt.getSubject()).isPresent();}
-      catch(IllegalArgumentException ignored){valid=false;}
+      try {
+        var record=patients.findByIdAndOwner(UUID.fromString(request.patientId()),jwt.getSubject());
+        valid=record.isPresent();recipient=record.orElse(null);
+      }catch(IllegalArgumentException ignored){valid=false;}
     }
     if(!valid)return ResponseEntity.badRequest().body(Map.of("error","Select a patient from your own registry"));
     if(request.scheduledAt().isAfter(Instant.now().plus(365,ChronoUnit.DAYS)))
       return ResponseEntity.badRequest().body(Map.of("error","Date must be within the next year"));
     var row=appointments.saveAndFlush(new DemoAppointment(
       jwt.getSubject(),request.patientId(),request.scheduledAt(),request.visitType()));
+    if(recipient!=null&&notices!=null)notices.sendAppointment(row,recipient);
     return ResponseEntity.status(HttpStatus.CREATED).header("Cache-Control","no-store").body(AppointmentResponse.from(row));
+  }
+  @PatchMapping("/{id}/advance")
+  @Transactional
+  public ResponseEntity<?> advance(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id){
+    DemoAppointment row=appointments.findByIdAndCreatedBy(id,jwt.getSubject())
+      .orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Appointment not found"));
+    try{row.advance();}
+    catch(IllegalStateException error){return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error","Visit cannot advance from this status"));}
+    appointments.saveAndFlush(row);
+    if(notices!=null){
+      try{patients.findByIdAndOwner(UUID.fromString(row.getPatientId()),jwt.getSubject())
+        .ifPresent(patient->notices.sendAppointment(row,patient));}
+      catch(IllegalArgumentException ignored){}
+    }
+    return ResponseEntity.ok().header("Cache-Control","no-store").body(AppointmentResponse.from(row));
   }
   @PatchMapping("/{id}/cancel")
   @Transactional
   public ResponseEntity<?> cancel(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id){
     return appointments.findByIdAndCreatedBy(id,jwt.getSubject())
-      .<ResponseEntity<?>>map(row->{row.cancel();return ResponseEntity.ok().header("Cache-Control","no-store").body(AppointmentResponse.from(row));})
+      .<ResponseEntity<?>>map(row->{
+        try{row.cancel();}catch(IllegalStateException error){return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error","Cannot cancel an active visit"));}
+        return ResponseEntity.ok().header("Cache-Control","no-store").body(AppointmentResponse.from(row));})
       .orElseGet(()->ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error","Appointment not found")));
   }
 }

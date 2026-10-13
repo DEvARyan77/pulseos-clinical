@@ -1,6 +1,8 @@
 package com.pulseos.patients;
 
 import jakarta.validation.Valid;
+import com.pulseos.appointments.AppointmentNoticeService;
+import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.validation.constraints.*;
 import java.util.List;
 import java.util.UUID;
@@ -17,8 +19,13 @@ public class PatientController {
   private final PatientRepository patients;
   private final VisitNoteRepository notes;
   private final PatientAuditRepository audits;
+  private final AppointmentNoticeService notices;
+  @Autowired
+  public PatientController(PatientRepository patients,VisitNoteRepository notes,PatientAuditRepository audits,AppointmentNoticeService notices){
+    this.patients=patients;this.notes=notes;this.audits=audits;this.notices=notices;
+  }
   public PatientController(PatientRepository patients,VisitNoteRepository notes,PatientAuditRepository audits){
-    this.patients=patients;this.notes=notes;this.audits=audits;
+    this(patients,notes,audits,null);
   }
   public record PatientInput(
     @NotBlank @Size(max=120) String fullName,
@@ -56,6 +63,7 @@ public class PatientController {
     row.apply(data);
     row=patients.saveAndFlush(row);
     audits.save(new PatientAudit(row.getId(),jwt.getSubject(),"PATIENT_CREATED"));
+    if(notices!=null)notices.sendCreated(row);
     return row;
   }
   @PutMapping("/{id}")

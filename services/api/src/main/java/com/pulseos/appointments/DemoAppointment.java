@@ -7,7 +7,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "demo_appointments")
 public class DemoAppointment {
-    public enum Status { SCHEDULED, CANCELLED }
+    public enum Status { SCHEDULED, CHECKED_IN, IN_CARE, COMPLETED, CANCELLED }
     public enum VisitType { FOLLOW_UP, ANNUAL_EXAM, CONSULTATION }
 
     @Id @GeneratedValue(strategy = GenerationType.UUID)
@@ -50,5 +50,7 @@ public class DemoAppointment {
     public Status getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
 
-    public void cancel() { status = Status.CANCELLED; }
+    public void cancel() { if(status!=Status.SCHEDULED&&status!=Status.CHECKED_IN)throw new IllegalStateException("Cannot cancel an active visit");status = Status.CANCELLED; }
+    public void checkIn(){if(status!=Status.SCHEDULED)throw new IllegalStateException("Visit already checked in");status=Status.CHECKED_IN;}
+    public void advance(){if(status==Status.CHECKED_IN)status=Status.IN_CARE;else if(status==Status.IN_CARE)status=Status.COMPLETED;else throw new IllegalStateException("Visit cannot advance");}
 }
