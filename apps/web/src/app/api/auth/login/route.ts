@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid authentication response" }, { status: 502 });
   }
 
-  const expires = Math.max(1, Math.min(Math.trunc(payload.expiresIn), 900));
+  const expires = Math.max(1, Math.min(Math.trunc(payload.expiresIn), 28800));
   const response = NextResponse.json({ ok: true });
   response.cookies.set("pulseos-session", payload.accessToken, {
     httpOnly: true,

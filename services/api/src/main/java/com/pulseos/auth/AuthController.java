@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 @ConditionalOnProperty(prefix = "pulseos.auth", name = "enabled", havingValue = "true")
 public class AuthController {
-    private static final int TOKEN_TTL_SECONDS = 900;
+    private static final int TOKEN_TTL_SECONDS = 28800;
     private final AuthenticationManager authenticationManager;
     private final JwtEncoder jwtEncoder;
     private final StaffAccountRepository staffAccounts;
