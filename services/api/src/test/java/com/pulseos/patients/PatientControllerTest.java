@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import java.util.Optional;
 import java.util.UUID;
+import jakarta.validation.Validation;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -24,6 +25,18 @@ class PatientControllerTest {
       .isInstanceOf(ResponseStatusException.class)
       .satisfies(e->assertThat(((ResponseStatusException)e).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     verify(patients).findByIdAndOwner(id,"staff-b");
+  }
+  @Test void rejectsInvalidGenderButAcceptsStandardOption(){
+    try(var factory=Validation.buildDefaultValidatorFactory()){
+      var validator=factory.getValidator();
+      var invalid=new PatientController.PatientInput("Sample Person",30,"anything","Demo visit",
+        "Room 1",PatientRecord.Status.WAITING,"—",null,null,"—","","","",null);
+      assertThat(validator.validate(invalid)).anySatisfy(error->
+        assertThat(error.getPropertyPath().toString()).isEqualTo("gender"));
+      var valid=new PatientController.PatientInput("Sample Person",30,"Non-binary","Demo visit",
+        "Room 1",PatientRecord.Status.WAITING,"—",null,null,"—","","","",null);
+      assertThat(validator.validate(valid)).isEmpty();
+    }
   }
   @Test void listsOnlyOwnedPatients(){
     when(staff.getSubject()).thenReturn("staff-a");

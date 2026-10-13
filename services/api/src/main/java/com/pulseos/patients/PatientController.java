@@ -23,7 +23,7 @@ public class PatientController {
   public record PatientInput(
     @NotBlank @Size(max=120) String fullName,
     @NotNull @Min(0) @Max(120) Integer age,
-    @NotBlank @Size(max=32) String gender,
+    @NotBlank @Size(max=32) @Pattern(regexp="^(Male|Female|Non-binary|Other|Prefer not to say|Unspecified)$", message="Select a valid gender") String gender,
     @NotBlank @Size(max=240) String reason,
     @NotBlank @Size(max=32) String room,
     @NotNull PatientRecord.Status status,

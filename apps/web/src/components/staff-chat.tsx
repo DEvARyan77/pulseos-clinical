@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import {FormEvent,useCallback,useEffect,useMemo,useState} from "react";
-import {HeartPulse,MessageCircle,RefreshCw,Send,ShieldCheck,UserRound} from "lucide-react";
+import {FormEvent,useCallback,useEffect,useMemo,useRef,useState} from "react";
+import {HeartPulse,MessageCircle,RefreshCw,Search,Send,ShieldCheck,UserRound} from "lucide-react";
 import ThemeSwitcher from "./theme-switcher";
 import SignOutButton from "./sign-out-button";
 import styles from "./staff-chat.module.css";
@@ -19,6 +19,8 @@ export default function StaffChat({username,role,initialTarget}:{username:string
  const [messages,setMessages]=useState<Message[]>([]);
  const [target,setTarget]=useState<string|null>(null);
  const [draft,setDraft]=useState("");
+ const [directoryQuery,setDirectoryQuery]=useState("");
+ const readAttempted=useRef(new Set<string>());
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState("");
  const reload=useCallback(()=>{
@@ -42,6 +44,20 @@ export default function StaffChat({username,role,initialTarget}:{username:string
    .filter(m=>(m.sender===username&&m.recipient===target)||(m.sender===target&&m.recipient===username))
    .slice().reverse(),[messages,username,target]);
  const unread=messages.filter(m=>m.recipient===username&&!m.readAt).length;
+ const matchingContacts=contacts.filter(p=>`${p.username} ${p.role}`.toLowerCase().includes(directoryQuery.trim().toLowerCase()));
+ useEffect(()=>{
+   if(!target)return;
+   const toRead=messages.filter(m=>m.sender===target&&m.recipient===username&&!m.readAt&&!readAttempted.current.has(m.id));
+   if(!toRead.length)return;
+   toRead.forEach(m=>readAttempted.current.add(m.id));
+   void Promise.allSettled(toRead.map(m=>json<Message>(`/api/staff-chat/messages/${m.id}/read`,{
+     method:"PATCH",headers:{"Content-Type":"application/json"},body:"{}"
+   }))).then(results=>{
+     results.forEach((result,i)=>{if(result.status==="rejected")readAttempted.current.delete(toRead[i].id);});
+     if(results.some(result=>result.status==="fulfilled"))void reload();
+     if(results.some(result=>result.status==="rejected"))setError("Some messages could not be marked read.");
+   });
+ },[messages,target,username,reload]);
  async function send(event:FormEvent<HTMLFormElement>){
    event.preventDefault();
    if(!target||!draft.trim()||busy)return;
@@ -55,13 +71,6 @@ export default function StaffChat({username,role,initialTarget}:{username:string
    }catch(cause){setError(cause instanceof Error?cause.message:"Message failed");}
    finally{setBusy(false);}
  }
- async function markRead(message:Message){
-   if(message.recipient!==username||message.readAt)return;
-   try{
-     await json<Message>(`/api/staff-chat/messages/${message.id}/read`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:"{}"});
-     await reload();
-   }catch(cause){setError(cause instanceof Error?cause.message:"Unable to mark read");}
- }
  return <main className={styles.page}>
    <header className={styles.header}>
      <div className={styles.brand}><HeartPulse size={24}/>Pulse<b>OS</b></div>
@@ -70,19 +79,21 @@ export default function StaffChat({username,role,initialTarget}:{username:string
    </header>
    <div className={styles.container}>
      <div className={styles.title}><div><p>STAFF COMMUNICATION</p><h1>Team messages</h1>
-       <span>Direct conversations with enabled clinicians and supervisors</span></div>
+       <span>Direct conversations with enabled clinicians and supervisors · Opened messages are marked read automatically</span></div>
        <button type="button" onClick={()=>void reload()}><RefreshCw size={16}/> Refresh</button>
      </div>
      <p className={styles.safety}><ShieldCheck size={17}/> Demo messages only. Do not send identifiable patient information or real clinical advice.</p>
      {error&&<p className={styles.error} role="alert">{error}</p>}
      <div className={styles.layout}>
        <aside className={styles.directory}><h2><UserRound size={16}/> Team directory <span>{unread? `· ${unread} unread`:""}</span></h2>
-         {contacts.map(p=><button key={p.username} type="button" className={target===p.username?styles.chosen:""}
+         <label className={styles.directorySearch}><Search size={15}/><input type="search" aria-label="Search staff to message" placeholder="Search teammates…" value={directoryQuery} onChange={event=>setDirectoryQuery(event.target.value)}/></label>
+         {matchingContacts.map(p=><button key={p.username} type="button" className={target===p.username?styles.chosen:""}
            aria-pressed={target===p.username} onClick={()=>setTarget(p.username)}>
            <strong>{p.username}</strong><small>{p.role==="ADMIN"?"Supervisor / Admin":"Clinician / Doctor"}</small>
            {messages.some(m=>m.sender===p.username&&m.recipient===username&&!m.readAt)&&<i aria-label="Unread messages"/>}
          </button>)}
          {!contacts.length&&<p className={styles.empty}>No other enabled staff accounts are available.</p>}
+         {!!contacts.length&&!matchingContacts.length&&<p className={styles.empty}>No teammates match your search.</p>}
        </aside>
        <section className={styles.conversation}>
          {active?<><div className={styles.recipient}><MessageCircle size={20}/><div><strong>{active.username}</strong><small>{active.role==="ADMIN"?"Supervisor / Admin":"Clinician / Doctor"}</small></div></div>
@@ -91,7 +102,6 @@ export default function StaffChat({username,role,initialTarget}:{username:string
              {visible.map(m=><div key={m.id} className={m.sender===username?styles.outgoing:styles.incoming}>
                 <p>{m.content}</p>
                 <div><time>{new Date(m.createdAt).toLocaleString()}</time>
-                  {m.recipient===username&&!m.readAt&&<button type="button" onClick={()=>void markRead(m)}>Mark read</button>}
                 </div>
              </div>)}
            </div>

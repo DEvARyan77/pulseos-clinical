@@ -21,7 +21,7 @@ type CareMember={username:string;role:"CLINICIAN"|"ADMIN"};
 type Notification={id:string;channel:"EMAIL"|"IN_APP";status:string;message:string;createdAt:string};
 const blank:PatientInput={fullName:"",age:35,gender:"Unspecified",reason:"General consultation",room:"Unassigned",status:"WAITING",bp:"—",heartRate:null,oxygen:null,temperature:"—",allergies:"",diagnoses:"",medications:"",contactEmail:null};
 const fields:[keyof PatientInput,string,number][]=[
- ["fullName","Name (fictional only)",120],["gender","Gender",32],["reason","Visit reason",240],
+ ["fullName","Name (fictional only)",120],["reason","Visit reason",240],
  ["room","Room / location",32],["bp","Blood pressure",16],["temperature","Temperature",16],
  ["allergies","Allergies",500],["diagnoses","Diagnoses",500],["medications","Medications",500]
 ];
@@ -201,6 +201,9 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
            <input type="text" value={String(form[key]??"")} required={["fullName","gender","reason","room"].includes(key)}
             maxLength={max} onChange={e=>editValue(key,e.target.value)}/>
          </label>)}
+         <label>Gender <select required value={form.gender} onChange={e=>editValue("gender",e.target.value)}>
+            {["Unspecified","Female","Male","Non-binary","Other","Prefer not to say"].map(value=><option key={value} value={value}>{value}</option>)}
+          </select></label>
          <label>Demo contact email (optional; allowlist required for sending)
            <input type="email" maxLength={254} value={form.contactEmail??""}
              placeholder="approved-demo@example.com" onChange={e=>setForm(old=>({...old,contactEmail:e.target.value||null}))}/>
