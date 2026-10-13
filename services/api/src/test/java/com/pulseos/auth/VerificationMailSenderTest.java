@@ -81,8 +81,27 @@ class VerificationMailSenderTest {
             .contains("multipart/");
         org.assertj.core.api.Assertions.assertThat(reset.getContentType())
             .contains("multipart/");
+        org.assertj.core.api.Assertions.assertThat(htmlBody(signup))
+            .contains("ACCOUNT VERIFICATION", "YOUR ONE-TIME CODE", "123456",
+                "Valid for 10 minutes", "#171b24", "#f4c64d")
+            .doesNotContain("https://", "<img");
+        org.assertj.core.api.Assertions.assertThat(htmlBody(reset))
+            .contains("PASSWORD RECOVERY", "Reset your password", "654321",
+                "Keep your account secure.");
         org.mockito.Mockito.verify(mail).send(signup);
         org.mockito.Mockito.verify(mail).send(reset);
+    }
+
+    private static String htmlBody(jakarta.mail.Part part) throws Exception {
+        if (part.isMimeType("text/html")) return (String) part.getContent();
+        if (part.isMimeType("multipart/*")) {
+            var multi = (jakarta.mail.Multipart) part.getContent();
+            for (int i = 0; i < multi.getCount(); i++) {
+                String html = htmlBody(multi.getBodyPart(i));
+                if (!html.isBlank()) return html;
+            }
+        }
+        return "";
     }
 
 }

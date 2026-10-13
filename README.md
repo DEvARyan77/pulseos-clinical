@@ -38,7 +38,7 @@ For **paid hosting or local development** using Gmail SMTP:
 
 Render **Free** blocks outbound SMTP ports 25/465/587. A Gmail app password does not work with Gmail's HTTPS API. See [email setup](docs/authentication.md).
 
-The branded email template requires updating your Apps Script's deployed version (**Deploy → Manage deployments → Edit → New version**); saving `Code.gs` alone is insufficient.
+For styled Gmail messages rather than plain text, republish your existing Google Apps Script Web app using the [email-template activation steps](docs/gmail-https-relay.md#why-you-are-currently-getting-plain-text-emails). The branded email template requires updating your Apps Script's deployed version (**Deploy → Manage deployments → Edit → New version**); saving `Code.gs` alone is insufficient.
 
 ## Application settings
 
