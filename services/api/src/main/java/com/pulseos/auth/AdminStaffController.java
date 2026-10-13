@@ -49,7 +49,8 @@ public class AdminStaffController {
     public ResponseEntity<List<StaffSummary>> list(@AuthenticationPrincipal Jwt jwt) {
         actingAdmin(jwt);
         return ResponseEntity.ok().header("Cache-Control", "no-store").body(
-            accounts.findAllByOrderByCreatedAtDesc().stream().map(StaffSummary::of).toList());
+            accounts.findAllByOrderByCreatedAtDesc().stream()
+                .filter(account->!StaffRole.PATIENT.name().equals(account.getRole())).map(StaffSummary::of).toList());
     }
 
     @PatchMapping("/{id}/role")
@@ -59,6 +60,8 @@ public class AdminStaffController {
         StaffAccount actor = actingAdmin(jwt);
         StaffAccount target = accounts.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Staff member not found"));
+        if(request.role()==StaffRole.PATIENT||StaffRole.PATIENT.name().equals(target.getRole()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Patient roles are not staff roles");
         if (actor.getId().equals(id) && request.role() != StaffRole.ADMIN) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "You cannot remove your own administrator role."));
@@ -75,6 +78,8 @@ public class AdminStaffController {
         StaffAccount actor = actingAdmin(jwt);
         StaffAccount target = accounts.findById(id)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Staff member not found"));
+        if(StaffRole.PATIENT.name().equals(target.getRole()))
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Patient accounts cannot be changed in staff management");
         if (actor.getId().equals(id) && !request.enabled()) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(Map.of("error", "You cannot deactivate your own account."));

@@ -25,7 +25,7 @@ public class FoundationSecurityConfiguration {
       .sessionManagement(session->session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
       .authorizeHttpRequests(auth->auth
         .requestMatchers("/actuator/health","/api/v1/system/status").permitAll()
-        .requestMatchers(HttpMethod.POST,"/api/v1/auth/login","/api/v1/auth/register","/api/v1/auth/verify",
+        .requestMatchers(HttpMethod.POST,"/api/v1/auth/login","/api/v1/auth/register","/api/v1/auth/patient-register","/api/v1/auth/verify",
             "/api/v1/auth/resend", "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password").permitAll()
         .requestMatchers(HttpMethod.GET,"/api/v1/auth/registration-status").permitAll()
@@ -37,12 +37,15 @@ public class FoundationSecurityConfiguration {
               return new org.springframework.security.authorization.AuthorizationDecision(false);
             return new org.springframework.security.authorization.AuthorizationDecision(
               staffAccounts.findByUsername(jwt.getToken().getSubject())
-                .filter(com.pulseos.auth.StaffAccount::isEnabled).isPresent());
+                .filter(com.pulseos.auth.StaffAccount::isEnabled)
+                .filter(a->com.pulseos.auth.StaffRole.ADMIN.name().equals(a.getRole())||
+                    com.pulseos.auth.StaffRole.CLINICIAN.name().equals(a.getRole())).isPresent());
           })
         .requestMatchers("/api/v1/admin/**")
           .access(new CurrentRoleAuthorization(staffAccounts, StaffRole.ADMIN, legacyUsername))
         .requestMatchers(HttpMethod.GET,"/api/v1/auth/me").authenticated()
         .requestMatchers("/api/v1/auth/profile").authenticated()
+        .requestMatchers("/api/v1/patient-portal/**").authenticated()
         .requestMatchers("/api/v1/demo-appointments","/api/v1/demo-appointments/**")
           .access(new CurrentRoleAuthorization(staffAccounts, StaffRole.CLINICIAN, legacyUsername))
         .requestMatchers("/api/v1/patients","/api/v1/patients/**")

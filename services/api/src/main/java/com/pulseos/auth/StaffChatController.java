@@ -23,6 +23,7 @@ public class StaffChatController {
   private StaffAccount caller(Jwt jwt){
     if(jwt==null)throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
     return accounts.findByUsername(jwt.getSubject()).filter(StaffAccount::isEnabled)
+      .filter(a->StaffRole.ADMIN.name().equals(a.getRole())||StaffRole.CLINICIAN.name().equals(a.getRole()))
       .orElseThrow(()->new ResponseStatusException(HttpStatus.FORBIDDEN,"Staff account required"));
   }
   public record Contact(String username,String role){}
@@ -34,7 +35,9 @@ public class StaffChatController {
   public List<Contact> contacts(@AuthenticationPrincipal Jwt jwt){
     String me=caller(jwt).getUsername();
     return accounts.findAllByOrderByCreatedAtDesc().stream()
-      .filter(StaffAccount::isEnabled).filter(a->!a.getUsername().equals(me))
+      .filter(StaffAccount::isEnabled)
+      .filter(a->StaffRole.ADMIN.name().equals(a.getRole())||StaffRole.CLINICIAN.name().equals(a.getRole()))
+      .filter(a->!a.getUsername().equals(me))
       .map(a->new Contact(a.getUsername(),a.getRole())).toList();
   }
   @GetMapping("/messages")
@@ -49,6 +52,7 @@ public class StaffChatController {
     String recipient=request.to().strip().toLowerCase(Locale.ROOT);
     if(recipient.equals(me))throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Choose another staff member");
     accounts.findByUsername(recipient).filter(StaffAccount::isEnabled)
+      .filter(a->StaffRole.ADMIN.name().equals(a.getRole())||StaffRole.CLINICIAN.name().equals(a.getRole()))
       .orElseThrow(()->new ResponseStatusException(HttpStatus.BAD_REQUEST,"Recipient not available"));
     String content=request.content()==null?"":request.content().strip();
     boolean withImage=request.imageBase64()!=null&&!request.imageBase64().isBlank();

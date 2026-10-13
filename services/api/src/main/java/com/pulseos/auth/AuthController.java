@@ -71,7 +71,7 @@ public class AuthController {
             .expiresAt(now.plus(TOKEN_TTL_SECONDS, ChronoUnit.SECONDS))
             .claim("roles", verified.getAuthorities().stream()
                 .map(authority -> authority.getAuthority())
-                .filter(authority -> authority.equals("ROLE_ADMIN") || authority.equals("ROLE_CLINICIAN"))
+                .filter(authority -> authority.equals("ROLE_ADMIN") || authority.equals("ROLE_CLINICIAN") || authority.equals("ROLE_PATIENT"))
                 .map(authority -> authority.substring(5))
                 .distinct().toList())
             .build();

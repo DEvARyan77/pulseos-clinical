@@ -87,6 +87,16 @@ public class RegistrationController {
     @PostMapping("/register")
     @Transactional
     public ResponseEntity<Map<String, Object>> register(@Valid @RequestBody RegisterRequest request) {
+        return registerAs(request,StaffRole.CLINICIAN);
+    }
+
+    @PostMapping("/patient-register")
+    @Transactional
+    public ResponseEntity<Map<String,Object>> registerPatient(@Valid @RequestBody RegisterRequest request){
+        return registerAs(request,StaffRole.PATIENT);
+    }
+
+    private ResponseEntity<Map<String,Object>> registerAs(RegisterRequest request,StaffRole role){
         if (!registrationEnabled) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", "Registration is closed"));
         }
@@ -115,11 +125,11 @@ public class RegistrationController {
         String hash = verificationHash(email, code);
         String passwordHash = passwordEncoder.encode(request.password());
         if (old.isPresent()) {
-            old.get().replace(username, passwordHash, hash, now);
+            old.get().replace(username, passwordHash, hash, now,role);
             pending.saveAndFlush(old.get());
         } else {
             pending.saveAndFlush(new PendingRegistration(username, email, passwordHash, hash,
-                now, now.plusSeconds(600)));
+                now, now.plusSeconds(600),role));
         }
         // Mail failure rolls back the pending challenge; no account is activated.
         mailer.send(email, code);
@@ -194,8 +204,9 @@ public class RegistrationController {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "Account already registered"));
         }
         try {
-            accounts.saveAndFlush(new StaffAccount(
-                attempt.getUsername(), email, attempt.getPasswordHash()));
+            StaffAccount account=new StaffAccount(attempt.getUsername(),email,attempt.getPasswordHash());
+            account.changeRole(StaffRole.valueOf(attempt.getAccountRole()));
+            accounts.saveAndFlush(account);
             pending.delete(attempt);
             return ResponseEntity.ok().header("Cache-Control", "no-store")
                 .body(Map.of("message", "Email verified. Your account is ready. Please sign in."));
