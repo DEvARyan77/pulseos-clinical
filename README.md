@@ -53,6 +53,37 @@ Open `/signup`, enter details, check your inbox, verify your code, then open `/l
 
 Flyway migrations are in `services/api/src/main/resources/db/migration`.
 
+
+## Admin and clinician access (RBAC)
+
+PulseOS has two roles: **CLINICIAN** and **ADMIN**. Every new email-verified signup receives CLINICIAN. Existing accounts are unchanged. An ADMIN manages synthetic staff accounts at `/admin`; a CLINICIAN works with their own fictional patient registry and appointments. ADMIN does **not** automatically gain access to patient or appointment APIs.
+
+The API checks each account's current database role and enabled state on every staff-management and clinical operation. Client-side navigation does not grant permissions. The Admin dashboard can promote/demote *other* staff members and enable/disable them; an admin cannot demote or disable themselves. This avoids accidentally locking out the last active admin. The optional legacy environment-based sign-in remains CLINICIAN-only.
+
+**One-time admin setup:** After creating and verifying your own staff account, use the connected Render PostgreSQL SQL console (privileged infrastructure access, not the public app) to promote only the intended account:
+
+```sql
+UPDATE staff_accounts
+SET role = 'ADMIN'
+WHERE email = 'your-verified-account@example.com'
+  AND enabled = true
+RETURNING username, email, role;
+```
+
+Replace the example email with the actual verified staff account. If the query returns zero rows, that account has not been registered or the email does not match. Sign out and sign in again to issue a JWT with the correct role; then open `/admin`. Do not add automatic admin privileges to public signup or commit personal credentials.
+
+**Permission matrix**
+
+| Capability | Clinician | Admin |
+|---|---|---|
+| Own fictional patient records, notes and appointments | Yes | No |
+| List all staff accounts | No | Yes |
+| Assign Admin or Clinician roles to other staff | No | Yes |
+| Enable or disable other staff accounts | No | Yes |
+| Assign own role or disable self | No | No |
+
+This is a synthetic portfolio, not a production clinical authorization implementation. Consider a separate audit log, MFA, fine-grained permissions, and stronger approval workflows before any production or regulated use.
+
 ## Security limitations
 
 Email verification checks mailbox access, **not professional licensure or authorization to access real patient information**. There is no MFA, login throttling, complete revocable-session system, medically compliant hosting, or clinical audit certification. Never store protected health information in this portfolio deployment.

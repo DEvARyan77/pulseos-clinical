@@ -8,6 +8,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Locale;
+import java.util.Optional;
 import org.springframework.security.core.Authentication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatus;
@@ -37,10 +38,13 @@ public class AuthController {
     private static final int TOKEN_TTL_SECONDS = 900;
     private final AuthenticationManager authenticationManager;
     private final JwtEncoder jwtEncoder;
+    private final StaffAccountRepository staffAccounts;
 
-    public AuthController(AuthenticationManager authenticationManager, JwtEncoder jwtEncoder) {
+    public AuthController(AuthenticationManager authenticationManager, JwtEncoder jwtEncoder,
+                          StaffAccountRepository staffAccounts) {
         this.authenticationManager = authenticationManager;
         this.jwtEncoder = jwtEncoder;
+        this.staffAccounts = staffAccounts;
     }
 
     public record LoginRequest(@NotBlank @Size(max = 254) String username,
@@ -65,7 +69,11 @@ public class AuthController {
             .subject(verified.getName())
             .issuedAt(now)
             .expiresAt(now.plus(TOKEN_TTL_SECONDS, ChronoUnit.SECONDS))
-            .claim("roles", List.of("CLINICIAN"))
+            .claim("roles", verified.getAuthorities().stream()
+                .map(authority -> authority.getAuthority())
+                .filter(authority -> authority.equals("ROLE_ADMIN") || authority.equals("ROLE_CLINICIAN"))
+                .map(authority -> authority.substring(5))
+                .distinct().toList())
             .build();
 
         String token = jwtEncoder.encode(JwtEncoderParameters.from(
@@ -77,9 +85,18 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> me(@AuthenticationPrincipal Jwt jwt) {
+    public ResponseEntity<?> me(@AuthenticationPrincipal Jwt jwt) {
+        var currentAccount = staffAccounts.findByUsername(jwt.getSubject());
+        if (currentAccount.isPresent() && !currentAccount.get().isEnabled()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .header("Cache-Control", "no-store")
+                .body(Map.of("error", "Account is disabled"));
+        }
+        // A legacy configured staff login is limited to CLINICIAN.
+        List<String> roles = currentAccount.map(account -> List.of(account.getRole()))
+            .orElseGet(() -> List.of("CLINICIAN"));
         return ResponseEntity.ok()
             .header("Cache-Control", "no-store")
-            .body(Map.of("username", jwt.getSubject(), "roles", jwt.getClaimAsStringList("roles")));
+            .body(Map.of("username", jwt.getSubject(), "roles", roles));
     }
 }

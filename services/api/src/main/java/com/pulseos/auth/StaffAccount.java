@@ -43,6 +43,8 @@ public class StaffAccount {
     public String getPasswordHash() { return passwordHash; }
     public void updatePasswordHash(String encoded) { this.passwordHash = encoded; }
     public String getRole() { return role; }
+    public void changeRole(StaffRole next) { this.role = java.util.Objects.requireNonNull(next).name(); }
+    public void setEnabled(boolean next) { this.enabled = next; }
     public boolean isEnabled() { return enabled; }
     public Instant getCreatedAt() { return createdAt; }
 }
