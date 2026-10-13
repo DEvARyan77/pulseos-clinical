@@ -40,7 +40,7 @@ public class AppointmentNoticeService {
     for(String email:allowlist.split(","))if(!email.isBlank())allowed.add(email.strip().toLowerCase(Locale.ROOT));
   }
   private static String json(String value){
-    return "\"" + value.replace("\\","\\\\").replace("\"","\\\"").replace("\n","\\n") + "\"";
+    return "\"" + value.replace("\\","\\").replace("\"","\"").replace("\n","\\n") + "\"";
   }
   private boolean allowed(PatientRecord patient){
     return patient!=null && patient.getContactEmail()!=null &&
@@ -74,11 +74,11 @@ public class AppointmentNoticeService {
         "\\nAppointment: "+when+"\\nVisit: "+visit+"\\nStatus: "+stage+
         "\\nCheck in using the attached QR or link: "+url+
         "\\nSign in as the verified patient to confirm. No real clinical information is included.";
-      String html="<html><body style=\\\"font-family:Arial;padding:22px\\\">"+
+      String html="<html><body style=\"font-family:Arial;padding:22px\">"+
         "<h1>PulseOS demo appointment</h1><p>Assigned clinician: "+doctor+"</p>"+
         "<p>Appointment: "+when+"</p><p>Visit: "+visit+"</p><p>Status: "+stage+"</p>"+
-        "<p><a href=\\\""+url+"\\\">Open appointment check-in</a></p>"+
-        "<img src=\\\"cid:pulseos-qr\\\" width=\\\"240\\\" height=\\\"240\\\" alt=\\\"Check-in QR\\\"/>"+
+        "<p><a href=\""+url+"\">Open appointment check-in</a></p>"+
+        "<img src=\"cid:pulseos-qr\" width=\"240\" height=\"240\" alt=\"Check-in QR\"/>"+
         "<p>Use your verified patient account. Fictional data only.</p></body></html>";
       String destination=patient.getContactEmail();
       switch(provider.toLowerCase(Locale.ROOT)){
