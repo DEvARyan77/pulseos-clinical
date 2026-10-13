@@ -1,9 +1,7 @@
 "use client";
-import Link from "next/link";
 import {FormEvent,useCallback,useEffect,useMemo,useRef,useState} from "react";
-import {HeartPulse,MessageCircle,RefreshCw,Search,Send,ShieldCheck,UserRound} from "lucide-react";
-import ThemeSwitcher from "./theme-switcher";
-import SignOutButton from "./sign-out-button";
+import {MessageCircle,RefreshCw,Search,Send,ShieldCheck,UserRound} from "lucide-react";
+import StaffNavbar from "./staff-navbar";
 import styles from "./staff-chat.module.css";
 
 type Contact={username:string;role:string};
@@ -72,11 +70,7 @@ export default function StaffChat({username,role,initialTarget}:{username:string
    finally{setBusy(false);}
  }
  return <main className={styles.page}>
-   <header className={styles.header}>
-     <div className={styles.brand}><HeartPulse size={24}/>Pulse<b>OS</b></div>
-     <nav><Link href={role==="ADMIN"?"/admin":"/"}>Dashboard</Link><span>Staff chat</span></nav>
-     <div className={styles.tools}><ThemeSwitcher/><SignOutButton/></div>
-   </header>
+   <StaffNavbar role={role} active="messages" />
    <div className={styles.container}>
      <div className={styles.title}><div><p>STAFF COMMUNICATION</p><h1>Team messages</h1>
        <span>Direct conversations with enabled clinicians and supervisors · Opened messages are marked read automatically</span></div>

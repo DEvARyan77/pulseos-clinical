@@ -1,9 +1,8 @@
 "use client";
 import Link from "next/link";
 import {FormEvent,useCallback,useEffect,useState} from "react";
-import {Activity,CalendarDays,ClipboardList,FileText,HeartPulse,History,Plus,Search,ShieldCheck,UserRound,Mail,MessageCircle,Bell} from "lucide-react";
-import ThemeSwitcher from "./theme-switcher";
-import SignOutButton from "./sign-out-button";
+import {Activity,CalendarDays,ClipboardList,FileText,History,Plus,Search,ShieldCheck,UserRound,Mail,MessageCircle,Bell} from "lucide-react";
+import StaffNavbar from "./staff-navbar";
 import styles from "./registry-workspace.module.css";
 
 type Status="WAITING"|"IN_CARE"|"COMPLETED";
@@ -163,12 +162,7 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
  }).sort((a,b)=>sortBy==="name"?a.fullName.localeCompare(b.fullName):
      sortBy==="oldest"?a.updatedAt.localeCompare(b.updatedAt):b.updatedAt.localeCompare(a.updatedAt));
  return <main className="app">
-   <header className="topbar">
-    <div className="logo"><HeartPulse size={25}/><span>Pulse<b>OS</b></span></div>
-    <nav className="topnav" aria-label="Navigation"><Link href="/">Patient registry</Link><Link href="/appointments">Appointments</Link><Link href="/messages">Staff chat</Link></nav>
-    <div className="topactions"><span className="demo-label"><ShieldCheck size={13}/> TEST RECORDS ONLY</span><ThemeSwitcher/>
-      <span className="api-state"><i className={apiStatus==="connected"?"connected":""}/> API {apiStatus}</span><SignOutButton/></div>
-   </header>
+   <StaffNavbar role="CLINICIAN" active="patients" apiStatus={apiStatus} />
    <div className="mobile-queue"><button type="button" onClick={()=>setMobileQueue(!mobileQueue)}>Patients</button><span>Clinical workspace</span></div>
    <div className="columns">
     <aside className={mobileQueue?"queue open":"queue"} aria-label="Patient registry">

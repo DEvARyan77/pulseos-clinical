@@ -2,6 +2,7 @@ import Link from "next/link";
 import { currentStaff } from "@/lib/staff-session";
 import { redirect } from "next/navigation";
 import ThemeSwitcher from "@/components/theme-switcher";
+import StaffNavbar from "@/components/staff-navbar";
 import AppointmentManager from "@/components/appointment-manager";
 import styles from "./appointments.module.css";
 
@@ -17,7 +18,7 @@ export default async function AppointmentsPage() {
   }
   return (
     <main className={styles.page}>
-      <header className={styles.header}><Link href="/">← Patient workspace</Link><ThemeSwitcher /></header>
+      {enabled ? <StaffNavbar role="CLINICIAN" active="appointments" /> : <header className={styles.header}><Link href="/">← Patient workspace</Link><ThemeSwitcher /></header>}
       <div className={styles.content}>
         <p className={styles.overline}>PULSEOS · DEMO OPERATIONS</p>
         <h1>Appointment scheduling</h1>

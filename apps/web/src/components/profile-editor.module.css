@@ -1,0 +1,5 @@
+.card{max-width:670px;margin:clamp(22px,5vw,64px) auto;padding:clamp(22px,4vw,45px);border:1px solid var(--line);background:var(--surface);border-radius:15px}
+.eyebrow{font-size:11px;font-weight:800;color:var(--accent-text);letter-spacing:1.5px;margin-bottom:10px}.card h1{font-size:30px}.helper{margin:12px 0 25px;color:var(--muted);line-height:1.7}
+.form{display:grid;gap:20px}.form label{display:grid;gap:8px;font-size:12px;font-weight:700}.form input{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--text)}
+.form input:read-only{color:var(--muted)}.form button{justify-self:start;background:var(--accent);border:0;border-radius:8px;padding:12px 18px;font-weight:800;color:var(--header)}
+.form button:disabled{opacity:.5}.error,.success{padding:12px;margin:15px 0;border-radius:8px;background:var(--accent-bg);color:var(--accent-text)}.error{color:#ad3c3c}
