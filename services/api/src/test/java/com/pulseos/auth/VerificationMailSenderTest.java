@@ -56,4 +56,31 @@ class VerificationMailSenderTest {
         org.assertj.core.api.Assertions.assertThat(sender.isConfigured()).isFalse();
     }
 
+    @Test
+    void smtpEmailsIncludeBrandedHtmlAndDistinctSubjects() throws Exception {
+        var mail = mock(JavaMailSender.class);
+        org.mockito.Mockito.when(smtp.getIfAvailable()).thenReturn(mail);
+
+        var signup = new jakarta.mail.internet.MimeMessage(
+            jakarta.mail.Session.getInstance(new java.util.Properties()));
+        var reset = new jakarta.mail.internet.MimeMessage(
+            jakarta.mail.Session.getInstance(new java.util.Properties()));
+        org.mockito.Mockito.when(mail.createMimeMessage()).thenReturn(signup, reset);
+
+        var sender = new VerificationMailSender("smtp", "sender@example.test", "", "", "", smtp);
+        sender.send("recipient@example.test", "123456");
+        sender.sendPasswordReset("recipient@example.test", "654321");
+
+        org.assertj.core.api.Assertions.assertThat(signup.getSubject())
+            .isEqualTo("Verify your PulseOS email");
+        org.assertj.core.api.Assertions.assertThat(reset.getSubject())
+            .isEqualTo("Reset your PulseOS password");
+        org.assertj.core.api.Assertions.assertThat(signup.getContentType())
+            .contains("multipart/");
+        org.assertj.core.api.Assertions.assertThat(reset.getContentType())
+            .contains("multipart/");
+        org.mockito.Mockito.verify(mail).send(signup);
+        org.mockito.Mockito.verify(mail).send(reset);
+    }
+
 }

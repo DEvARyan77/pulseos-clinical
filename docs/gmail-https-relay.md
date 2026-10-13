@@ -24,6 +24,12 @@ PulseOS can send six-digit signup codes **from your own Gmail account**, without
 
 **Do not share the relay key or Gmail password in chat or commit them.** The Apps Script key and the backend key must match. The formerly shared Gmail app password is not used, and should be revoked.
 
+## Update an existing Apps Script deployment
+
+If the email relay is **already sending signup codes**, replace the code in the Apps Script editor with the latest [PulseOS email relay](../scripts/google-mail-relay.gs), then choose **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy**. Simply saving `Code.gs` does not update the running `/exec` URL.
+
+The updated script sends **branded amber/charcoal HTML emails** for both account verification and password recovery, with a plain-text fallback. The existing Render relay URL and secret remain unchanged. Older versions will still accept signup codes, but will not show the new HTML design or the distinct password-reset subject.
+
 ## Troubleshooting
 
 - `503`: the sender isn't configured, Apps Script hasn't been authorized/deployed, the shared key differs, the Gmail account is over quota, or Google is unavailable. Recheck the Script's **Executions** page (it does not log codes) and Render application logs.

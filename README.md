@@ -8,6 +8,9 @@ Next.js 16, Spring Boot 4.1, PostgreSQL, JWT authentication, patient records, ap
 
 - Responsive light/dark/system themes with **amber/yellow and charcoal** accents
 - Staff account registration using **email verification**: username, email and password → six-digit email code → activate account → login
+- Designed amber/charcoal HTML email templates for verification and password-reset codes (plain-text fallback)
+- Resend signup verification codes after a 60-second cooldown, without retyping the password
+- Email-based password recovery with one-time codes at `/forgot-password`
 - Existing staff accounts continue to work
 - User-scoped patient records, editing, visit notes, timestamps and change history
 - Authenticated PostgreSQL appointment scheduling for patients in the user's test registry
@@ -34,6 +37,8 @@ For **paid hosting or local development** using Gmail SMTP:
 - `PULSEOS_SMTP_PASSWORD` = new Google app password, stored in environment configuration only
 
 Render **Free** blocks outbound SMTP ports 25/465/587. A Gmail app password does not work with Gmail's HTTPS API. See [email setup](docs/authentication.md).
+
+The branded email template requires updating your Apps Script's deployed version (**Deploy → Manage deployments → Edit → New version**); saving `Code.gs` alone is insufficient.
 
 ## Application settings
 

@@ -41,6 +41,7 @@ public class StaffAccount {
     public String getUsername() { return username; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
+    public void updatePasswordHash(String encoded) { this.passwordHash = encoded; }
     public String getRole() { return role; }
     public boolean isEnabled() { return enabled; }
     public Instant getCreatedAt() { return createdAt; }

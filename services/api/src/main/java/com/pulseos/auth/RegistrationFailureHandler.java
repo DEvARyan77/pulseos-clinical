@@ -18,7 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
  * Do not log exception messages/stack traces: those may include submitted fields,
  * provider URLs, email addresses, or challenge details.
  */
-@RestControllerAdvice(assignableTypes = RegistrationController.class)
+@RestControllerAdvice(assignableTypes = {RegistrationController.class, PasswordResetController.class})
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class RegistrationFailureHandler {
     private static final Logger log = LoggerFactory.getLogger(RegistrationFailureHandler.class);

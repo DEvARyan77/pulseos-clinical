@@ -57,6 +57,15 @@ For a Google Apps Script relay rejection, check **pulseos-api → Logs**. Safe e
 
 **Operational check:** Ensure `PULSEOS_EMAIL_PROVIDER=google-script`, `PULSEOS_EMAIL_FROM` is the sender address, `PULSEOS_GOOGLE_SCRIPT_URL` is the deployed `/exec` URL, and `PULSEOS_GOOGLE_SCRIPT_KEY` matches the Apps Script property `PULSEOS_MAIL_RELAY_KEY`. Do not paste those secrets into chats or GitHub.
 
+## Authentication upgrades
+
+- **Designed transactional emails:** PulseOS-styled yellow/charcoal HTML email with a large six-digit code, 10-minute expiry notice, plain-text alternative, and privacy disclaimer. SMTP and Resend send HTML directly; the Google Apps Script relay must be republished with the latest code.
+- **Resend signup code:** A button on the verification step requests another challenge without requiring the user to type their password again. The server enforces a 60-second cooldown, six-digit codes, a 10-minute expiry, and a five-attempt limit.
+- **Forgot password:** On `/login`, open **Forgot your password?** to request a reset code; go to `/forgot-password`, enter the six-digit email code and a new password (8–128 characters), then sign in. Reset codes are HMAC-hashed in PostgreSQL, expire in 10 minutes, and lock after five invalid entries. The server returns a generic response for both known and unknown addresses to avoid exposing registered accounts.
+- New recovery challenge storage is created by Flyway migration V6. The signup invitation-code workflow is still removed. Existing accounts and passwords remain intact until the owner completes a password reset.
+
+Security scope: password changes do not immediately revoke any previously issued JWT; these sessions expire within 15 minutes. This remains a synthetic-data portfolio, not a real clinical system. Public password recovery needs additional abuse controls before production use.
+
 ## Troubleshooting
 
 - "Email delivery is not configured" (503): configure a supported email provider and valid sender credentials.

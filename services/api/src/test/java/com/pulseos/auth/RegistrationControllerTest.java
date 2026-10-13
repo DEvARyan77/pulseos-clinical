@@ -89,4 +89,33 @@ class RegistrationControllerTest {
         verify(pending, never()).saveAndFlush(any());
     }
 
+    @Test
+    void resendRefreshesPendingChallengeWithoutRequiringPassword() {
+        when(mailer.isConfigured()).thenReturn(true);
+        var original = new PendingRegistration("clinician", "member@example.test",
+            "encoded-existing-password", "previous-proof",
+            java.time.Instant.now().minusSeconds(75), java.time.Instant.now().plusSeconds(525));
+        when(pending.findByEmail("member@example.test")).thenReturn(Optional.of(original));
+        var response = controller(true).resend(
+            new RegistrationController.ResendRequest("member@example.test"));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        assertThat(original.getPasswordHash()).isEqualTo("encoded-existing-password");
+        assertThat(original.getVerificationHash()).hasSize(64);
+        verify(pending).saveAndFlush(original);
+        verify(mailer).send(eq("member@example.test"), argThat(code -> code.matches("[0-9]{6}")));
+    }
+
+    @Test
+    void resendDuringCooldownDoesNotSendMail() {
+        when(mailer.isConfigured()).thenReturn(true);
+        var existing = new PendingRegistration("clinician", "member@example.test",
+            "encoded-existing-password", "proof",
+            java.time.Instant.now(), java.time.Instant.now().plusSeconds(600));
+        when(pending.findByEmail("member@example.test")).thenReturn(Optional.of(existing));
+        var response = controller(true).resend(
+            new RegistrationController.ResendRequest("member@example.test"));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
+        verify(mailer, never()).send(anyString(), anyString());
+    }
+
 }

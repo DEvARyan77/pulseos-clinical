@@ -12,7 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.mail.SimpleMailMessage;
+import jakarta.mail.internet.MimeMessage;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -79,22 +80,34 @@ public class VerificationMailSender {
     }
 
     public void send(String destination, String code) {
+        sendCode(destination, code, false);
+    }
+
+    public void sendPasswordReset(String destination, String code) {
+        sendCode(destination, code, true);
+    }
+
+    private void sendCode(String destination, String code, boolean reset) {
         if (from.isBlank()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Verification email is not configured");
         }
-        String message = "Your PulseOS verification code is: " + code +
-            "\nThis code expires in 10 minutes. If you did not request this code, ignore this message." +
-            "\nNever use real patient data in this portfolio application.";
+        String subject = reset ? "Reset your PulseOS password" : "Verify your PulseOS email";
+        String message = (reset ? "Your PulseOS password reset code is: " :
+            "Your PulseOS verification code is: ") + code +
+            "\nThis code expires in 10 minutes. If you did not request it, ignore this message." +
+            "\nThis portfolio is for synthetic data only.";
+        String html = brandedHtml(code, reset);
         try {
             switch (provider.toLowerCase(java.util.Locale.ROOT)) {
                 case "smtp" -> {
                     JavaMailSender mail = smtp.getIfAvailable();
                     if (mail == null) throw new IllegalStateException("SMTP mail service is not configured");
-                    SimpleMailMessage email = new SimpleMailMessage();
-                    email.setFrom(from);
-                    email.setTo(destination);
-                    email.setSubject("Verify your PulseOS email");
-                    email.setText(message);
+                    MimeMessage email = mail.createMimeMessage();
+                    MimeMessageHelper helper = new MimeMessageHelper(email, true, "UTF-8");
+                    helper.setFrom(from);
+                    helper.setTo(destination);
+                    helper.setSubject(subject);
+                    helper.setText(message, html);
                     mail.send(email);
                 }
                 case "google-script" -> {
@@ -110,7 +123,8 @@ public class VerificationMailSender {
                         throw new IllegalStateException("Google Apps Script relay URL is invalid");
                     }
                     String payload = "{\"relayKey\":" + quote(googleScriptKey) +
-                        ",\"email\":" + quote(destination) + ",\"code\":" + quote(code) + "}";
+                        ",\"email\":" + quote(destination) + ",\"code\":" + quote(code) +
+                        ",\"kind\":" + quote(reset ? "reset" : "signup") + "}";
                     HttpRequest request = HttpRequest.newBuilder(endpoint)
                         .timeout(Duration.ofSeconds(45))
                         .header("Content-Type", "application/json")
@@ -135,7 +149,8 @@ public class VerificationMailSender {
                 case "resend" -> {
                     if (resendApiKey.isBlank()) throw new IllegalStateException("HTTPS mail API key missing");
                     String payload = "{\"from\":" + quote(from) + ",\"to\":[" + quote(destination) +
-                        "],\"subject\":\"Verify your PulseOS email\",\"text\":" + quote(message) + "}";
+                        "],\"subject\":" + quote(subject) + ",\"text\":" + quote(message) +
+                        ",\"html\":" + quote(html) + "}";
                     HttpRequest request = HttpRequest.newBuilder(URI.create("https://api.resend.com/emails"))
                         .timeout(Duration.ofSeconds(20))
                         .header("Authorization", "Bearer " + resendApiKey)
@@ -164,6 +179,25 @@ public class VerificationMailSender {
                 "Verification email could not be delivered. Contact the application administrator.");
         }
     }
+
+    private static String brandedHtml(String code, boolean reset) {
+        String title = reset ? "Reset your password" : "Verify your email";
+        String description = reset ? "Use this one-time code to choose a new password." :
+            "Use this one-time code to finish creating your account.";
+        return "<!doctype html><html><head><meta charset=\"UTF-8\"></head>" +
+            "<body style=\"margin:0;padding:32px 12px;background:#f7f7f4;font-family:Arial,Helvetica,sans-serif;color:#272933\">" +
+            "<table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" style=\"max-width:520px;width:100%;margin:auto;background:#fff;border:1px solid #e8e4d9;border-radius:16px\"><tr><td style=\"padding:34px 34px 14px\">" +
+            "<div style=\"font-size:28px;font-weight:800;letter-spacing:-1px\">Pulse<span style=\"color:#bb8a16\">OS</span></div>" +
+            "<p style=\"color:#785409;font-size:11px;letter-spacing:2px;font-weight:700;margin:30px 0 8px\">SECURE ACCOUNT ACCESS</p>" +
+            "<h1 style=\"margin:0 0 12px;font-size:26px;line-height:1.3\">" + title + "</h1>" +
+            "<p style=\"font-size:15px;color:#555861;line-height:1.6;margin:0 0 24px\">" + description + "</p>" +
+            "<div style=\"text-align:center;background:#fff5cf;border:1px solid #e5b52b;border-radius:12px;padding:21px 10px;margin-bottom:20px\">" +
+            "<span style=\"font-family:Arial,Helvetica,sans-serif;font-size:34px;letter-spacing:9px;font-weight:800;color:#171b24\">" + code + "</span></div>" +
+            "<p style=\"font-size:13px;line-height:1.7;color:#555861\">This code expires in <b>10 minutes</b>. Never share it. If you did not request it, you can ignore this email.</p>" +
+            "</td></tr><tr><td style=\"padding:18px 34px 28px;border-top:1px solid #e8e4d9;color:#777983;font-size:11px;line-height:1.6\">" +
+            "PulseOS is a clinical operations portfolio using fictional data only. No real patient records.</td></tr></table></body></html>";
+    }
+
     private static String quote(String text) {
         StringBuilder encoded = new StringBuilder("\"");
         for (char c : text.toCharArray()) {

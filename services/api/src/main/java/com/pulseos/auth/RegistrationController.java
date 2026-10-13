@@ -19,6 +19,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -122,6 +124,41 @@ public class RegistrationController {
             .header("Cache-Control", "no-store")
             .body(Map.of("message", "Verification code sent. Check your email.",
                 "expiresIn", 600));
+    }
+
+    public record ResendRequest(@NotBlank @Email @Size(max = 254) String email) {}
+
+    @PostMapping("/resend")
+    @Transactional
+    public ResponseEntity<Map<String, String>> resend(@Valid @RequestBody ResendRequest request) {
+        if (!registrationEnabled) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "Registration is closed"));
+        }
+        if (!mailer.isConfigured()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", "Email delivery is not configured"));
+        }
+        String email = request.email().strip().toLowerCase(Locale.ROOT);
+        Instant now = Instant.now();
+        PendingRegistration challenge = pending.findByEmail(email).orElse(null);
+        // Return identical responses for missing challenges and cooldown.
+        if (challenge == null || !challenge.getExpiresAt().isAfter(now) ||
+            challenge.getSentAt().isAfter(now.minusSeconds(60))) {
+            return ResponseEntity.accepted().header("Cache-Control", "no-store")
+                .body(Map.of("message", "If signup is pending, a new code will be sent."));
+        }
+        String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
+        String hash = verificationHash(email, code);
+        challenge.replace(challenge.getUsername(), challenge.getPasswordHash(), hash, now);
+        pending.saveAndFlush(challenge);
+        try {
+            mailer.send(email, code);
+        } catch (ResponseStatusException exception) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        }
+        return ResponseEntity.accepted().header("Cache-Control", "no-store")
+            .body(Map.of("message", "If signup is pending, a new code will be sent."));
     }
 
     @PostMapping("/verify")

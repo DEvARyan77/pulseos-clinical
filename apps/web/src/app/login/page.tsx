@@ -20,6 +20,7 @@ export default function LoginPage() {
           but sign-in will not work until the Render environment is configured.
         </div>}
         <LoginForm enabled={enabled} />
+        <p className={styles.formLink}><Link href="/forgot-password">Forgot your password?</Link></p>
         <p className={styles.formLink}>New here? <Link href="/signup">Create an account</Link></p>
         {!enabled && <p className={styles.formLink}><Link href="/">Explore the synthetic dashboard →</Link></p>}
         <div className={styles.notice}>Only fictional records. Not authorized for real patient data.</div>

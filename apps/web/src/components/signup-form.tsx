@@ -15,6 +15,12 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
   const [feedback, setFeedback] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [resendSeconds, setResendSeconds] = useState(0);
+  useEffect(() => {
+    if (resendSeconds <= 0) return;
+    const timer = setInterval(() => setResendSeconds((remaining) => Math.max(0, remaining - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [resendSeconds]);
   useEffect(() => { if (enabled) wakeAuthApi(); }, [enabled]);
 
   async function submitDetails(event: FormEvent<HTMLFormElement>) {
@@ -46,10 +52,37 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
       }
       setPassword("");
       setStep("verify");
+      setResendSeconds(60);
       setFeedback("We sent a six-digit code to your email. Check your inbox and spam folder.");
     } catch (cause) {
       setFeedback("");
       setError(cause instanceof Error ? cause.message : "Could not contact the registration server.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function resendCode() {
+    if (pending || resendSeconds > 0) return;
+    setError("");
+    setFeedback("");
+    setPending(true);
+    try {
+      await waitForAuthApi(setFeedback, true);
+      const response = await fetch("/api/auth/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+        cache: "no-store",
+      });
+      const result = await response.json() as { error?: string; message?: string };
+      if (!response.ok) throw new Error(result.error ?? "Unable to request another code.");
+      setCode("");
+      setResendSeconds(60);
+      setFeedback(result.message ?? "If your signup is pending, another code will be sent.");
+    } catch (cause) {
+      setFeedback("");
+      setError(cause instanceof Error ? cause.message : "Could not request another code.");
     } finally {
       setPending(false);
     }
@@ -101,9 +134,13 @@ export default function SignupForm({ enabled }: { enabled: boolean }) {
         <button type="submit" className="auth-submit" disabled={pending}>
           {pending ? "Verifying…" : "Verify email and activate account"}
         </button>
+        <button type="button" className="auth-secondary"
+          disabled={pending || resendSeconds > 0} onClick={() => void resendCode()}>
+          {resendSeconds > 0 ? `Resend code in ${resendSeconds}s` : "Resend verification code"}
+        </button>
         <button type="button" className="auth-secondary" disabled={pending}
-          onClick={() => { setCode(""); setStep("details"); setFeedback(""); setError(""); }}>
-          Start over / request a new code
+          onClick={() => { setCode(""); setStep("details"); setFeedback(""); setError(""); setResendSeconds(0); }}>
+          Change registration details
         </button>
       </form>
     );
