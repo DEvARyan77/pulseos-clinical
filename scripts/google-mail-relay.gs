@@ -31,9 +31,13 @@ function doPost(e) {
     }
 
     const isReset = kind === "reset";
+    // Each request gets a non-sensitive reference so Gmail does not thread
+    // newly generated codes under an older message with the same subject.
+    const reference = Utilities.getUuid().slice(0, 8).toUpperCase();
     MailApp.sendEmail({
       to: recipient,
-      subject: isReset ? "Reset your PulseOS password" : "Verify your PulseOS email",
+      subject: (isReset ? "Reset your PulseOS password" : "Verify your PulseOS email") +
+        " · #" + reference,
       body: plainText_(code, isReset),
       htmlBody: html_(code, isReset),
       name: "PulseOS"
@@ -169,6 +173,12 @@ function html_(code, isReset) {
     '</td></tr></table>',
     '</body></html>'
   ].join("");
+}
+
+// Safe, public status string for checking whether a new web-app deployment
+// is running. Do not return secrets, users or private mailer configuration.
+function doGet() {
+  return text_("PulseOS email relay: styled HTML v4");
 }
 
 function text_(message) {

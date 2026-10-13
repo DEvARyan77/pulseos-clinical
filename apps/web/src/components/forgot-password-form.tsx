@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import PasswordField from "./password-field";
+import { ArrowLeft, Clock3, MailCheck, RefreshCw } from "lucide-react";
+import styles from "./auth-flow.module.css";
 import { waitForAuthApi, wakeAuthApi } from "@/lib/auth-readiness";
 
 export default function ForgotPasswordForm({ enabled }: { enabled: boolean }) {
@@ -80,45 +82,81 @@ export default function ForgotPasswordForm({ enabled }: { enabled: boolean }) {
   }
 
   return (
-    <div>
+    <div className={styles.flow}>
       {step === "email" && (
         <form className="auth-form" onSubmit={requestCode}>
           <label htmlFor="reset-email">Account email address</label>
           <input id="reset-email" type="email" autoComplete="email" value={email}
             onChange={(event) => setEmail(event.target.value)} maxLength={254} required />
-          <p className="auth-description">We&apos;ll send a six-digit code if an account exists for this email.</p>
+          <p className="auth-description">If this email belongs to an account, you can recover it with a six-digit code.</p>
+          {message && <p className={`${styles.status} ${styles.statusSuccess}`} role="status">{message}</p>}
+          {error && <p className={`${styles.status} ${styles.statusError}`} role="alert">{error}</p>}
           <button className="auth-submit" type="submit" disabled={busy}>
             {busy ? "Connecting to account service…" : "Email me a reset code"}
           </button>
         </form>
       )}
+
       {step === "code" && (
         <form className="auth-form" onSubmit={resetPassword}>
-          <p className="auth-description">Check <strong>{email}</strong>. Codes expire after 10 minutes.</p>
-          <label htmlFor="reset-code">Six-digit email code</label>
-          <input id="reset-code" type="text" inputMode="numeric" autoComplete="one-time-code"
+          <div className={styles.inboxCard}>
+            <div className={styles.inboxIcon}><MailCheck size={19} aria-hidden="true" /></div>
+            <div className={styles.inboxBody}>
+              <p className={styles.inboxTitle}>Check your email</p>
+              <p className={styles.inboxText}>If an account exists, your reset code was requested for <strong>{email}</strong>.</p>
+            </div>
+          </div>
+
+          <label htmlFor="reset-code" className={styles.codeLabel}>
+            Six-digit reset code
+            <span className={styles.expiry}><Clock3 size={13} aria-hidden="true" /> Expires in 10 min</span>
+          </label>
+          <input id="reset-code" className={styles.codeInput} type="text" inputMode="numeric"
+            autoComplete="one-time-code" pattern="[0-9]{6}" spellCheck={false}
             value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))}
             minLength={6} maxLength={6} required placeholder="000000" />
-          <label htmlFor="reset-password">New password (8 characters minimum)</label>
-          <PasswordField id="reset-password" value={password} onChange={setPassword}
-            autoComplete="new-password" minLength={8} maxLength={128} required />
-          <label htmlFor="reset-confirm">Confirm new password</label>
-          <PasswordField id="reset-confirm" value={confirmation} onChange={setConfirmation}
-            autoComplete="new-password" minLength={8} maxLength={128} required />
+          <p className={styles.hint}>Use the most recent code and check Spam or Promotions if your message is delayed.</p>
+
+          <div className={styles.passwordGroup}>
+            <label htmlFor="reset-password">New password (8 characters minimum)</label>
+            <PasswordField id="reset-password" value={password} onChange={setPassword}
+              autoComplete="new-password" minLength={8} maxLength={128} required />
+            <label htmlFor="reset-confirm">Confirm new password</label>
+            <PasswordField id="reset-confirm" value={confirmation} onChange={setConfirmation}
+              autoComplete="new-password" minLength={8} maxLength={128} required />
+          </div>
+
+          {message && <p className={`${styles.status} ${styles.statusSuccess}`} role="status">{message}</p>}
+          {error && <p className={`${styles.status} ${styles.statusError}`} role="alert">{error}</p>}
+
           <button type="submit" className="auth-submit" disabled={busy}>
             {busy ? "Updating password…" : "Reset password"}
           </button>
-          <button type="button" className="auth-secondary"
-            disabled={busy || cooldown > 0} onClick={() => void requestCode()}>
-            {cooldown > 0 ? `Request another code in ${cooldown}s` : "Email another code"}
+          <div className={styles.resendPanel}>
+            <div>
+              <p className={styles.resendTitle}>Code hasn&apos;t arrived?</p>
+              <p className={styles.resendHelp}>Request a new code once the one-minute cooldown finishes.</p>
+            </div>
+            <button type="button" className={styles.resendButton}
+              disabled={busy || cooldown > 0} onClick={() => void requestCode()}>
+              <RefreshCw size={16} aria-hidden="true" />
+              {busy ? "Sending request…" : cooldown > 0 ? `Resend in ${cooldown}s` : "Resend reset code"}
+            </button>
+          </div>
+          <button type="button" className={styles.textButton} disabled={busy}
+            onClick={() => { setStep("email"); setCode(""); setError(""); setMessage(""); }}>
+            <ArrowLeft size={15} aria-hidden="true" /> Change email address
           </button>
         </form>
       )}
+
       {step === "complete" && (
-        <p className="auth-success" role="status">Password changed successfully. <Link href="/login">Sign in with your new password.</Link></p>
+        <div className={styles.successPanel} role="status">
+          <h2>Password updated</h2>
+          <p>You can now sign in using your new password.</p>
+          <Link href="/login">Continue to sign in</Link>
+        </div>
       )}
-      {message && step !== "complete" && <p className="auth-success" role="status">{message}</p>}
-      {error && <p className="auth-error" role="alert">{error}</p>}
     </div>
   );
 }

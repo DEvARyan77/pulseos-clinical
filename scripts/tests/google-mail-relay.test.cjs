@@ -17,6 +17,9 @@ function harness(secret = "a".repeat(64)) {
     MailApp: {
       sendEmail(message) { sent.push(message); }
     },
+    Utilities: {
+      getUuid() { return "a1b2c3d4-ffff-eeee-1234-000000000000"; }
+    },
     ContentService: {
       MimeType: { TEXT: "text/plain" },
       createTextOutput(message) {
@@ -47,7 +50,7 @@ test("signup delivers a designed HTML email and plain-text fallback", () => {
   assert.equal(h.sent.length, 1);
   const message = h.sent[0];
   assert.equal(message.name, "PulseOS");
-  assert.equal(message.subject, "Verify your PulseOS email");
+  assert.equal(message.subject, "Verify your PulseOS email · #A1B2C3D4");
   assert.match(message.body, /012345/);
   assert.match(message.body, /10 minutes/);
   assert.match(message.htmlBody, /012345/);
@@ -68,7 +71,7 @@ test("password reset uses a distinct branded subject and contextual instructions
     code: "654321", kind: "reset"
   }), "OK");
   const message = h.sent[0];
-  assert.equal(message.subject, "Reset your PulseOS password");
+  assert.equal(message.subject, "Reset your PulseOS password · #A1B2C3D4");
   assert.match(message.htmlBody, /PASSWORD RECOVERY/);
   assert.match(message.htmlBody, /Reset your password/);
   assert.match(message.htmlBody, /654321/);
@@ -101,4 +104,9 @@ test("malformed, invalid purpose, and HTML injection are rejected", () => {
   assert.equal(h.post({ ...payload, email: "not-an-address" }), "INVALID");
   assert.equal(h.post({ ...payload, kind: "newsletter" }), "INVALID");
   assert.equal(h.sent.length, 0);
+});
+
+test("deployed relay provides a non-sensitive HTML version marker", () => {
+  const h = harness();
+  assert.equal(h.context.doGet().message, "PulseOS email relay: styled HTML v4");
 });

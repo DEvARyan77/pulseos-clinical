@@ -1,0 +1,50 @@
+
+.flow { min-width:0; }
+.stepper { display:flex;align-items:center;gap:10px;margin:0 0 5px;font-size:11px;color:var(--muted);font-weight:700; }
+.step { display:inline-flex;align-items:center;gap:7px;white-space:nowrap; }
+.stepNumber { width:23px;height:23px;border:1px solid var(--line);border-radius:50%;background:var(--soft);display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0; }
+.stepActive { color:var(--text); }
+.stepActive .stepNumber { background:var(--accent);border-color:var(--accent);color:#1b1e27; }
+.stepDone .stepNumber { background:var(--accent-bg);color:var(--accent-text);border-color:var(--accent); }
+.stepLine { height:1px;flex:0 1 28px;background:var(--line); }
+.inboxCard { display:flex;gap:13px;align-items:flex-start;border:1px solid var(--line);border-radius:13px;background:var(--soft2);padding:16px;margin:9px 0 7px;min-width:0; }
+.inboxIcon { display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:11px;background:var(--accent-bg);color:var(--accent-text); }
+.inboxBody { min-width:0; }
+.inboxTitle { color:var(--text);font-size:14px;font-weight:800;line-height:1.35;margin:0 0 5px!important; }
+.inboxText { color:var(--muted);font-size:12px;line-height:1.55;margin:0!important;overflow-wrap:anywhere; }
+.inboxText strong { color:var(--text); }
+.codeLabel { display:flex;align-items:center;justify-content:space-between;gap:9px; }
+.expiry { display:inline-flex;align-items:center;gap:4px;color:var(--muted);font-size:10px;font-weight:600;white-space:nowrap; }
+.codeInput { width:100%;height:62px;min-height:62px!important;text-align:center;font-size:27px!important;font-weight:800;letter-spacing:9px;padding-left:19px!important;font-variant-numeric:tabular-nums;box-sizing:border-box; }
+.codeInput::placeholder { font-size:17px;font-weight:500;letter-spacing:1px; }
+.actionStack { display:grid;gap:10px;margin-top:4px; }
+.actionStack > button { margin:0!important; }
+.resendPanel { border:1px solid var(--line);border-radius:12px;background:var(--soft);padding:15px;display:grid;gap:10px;margin-top:5px; }
+.resendTitle { margin:0!important;color:var(--text)!important;font-size:12px!important;font-weight:800; }
+.resendHelp { margin:2px 0 0!important;color:var(--muted)!important;font-size:11px!important;line-height:1.55!important; }
+.resendButton { width:100%;min-height:44px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);padding:10px 12px;display:inline-flex;align-items:center;justify-content:center;gap:9px;font-size:12px;font-weight:750;transition:background .15s ease,border-color .15s ease; }
+.resendButton:hover:not(:disabled) { background:var(--accent-bg);border-color:var(--accent); }
+.resendButton:disabled { cursor:not-allowed;opacity:.7; }
+.resendButton svg { flex-shrink:0; }
+.timer { font-size:11px;letter-spacing:.2px;color:var(--muted); }
+.textButton { width:100%;border:0;background:transparent;color:var(--accent-text);font-size:12px;font-weight:750;min-height:40px;padding:8px 10px;display:flex;gap:8px;align-items:center;justify-content:center; }
+.textButton:hover:not(:disabled) { text-decoration:underline;background:var(--soft2);border-radius:9px; }
+.textButton:disabled { opacity:.55;cursor:not-allowed; }
+.hint { margin:3px 0 0!important;color:var(--muted)!important;line-height:1.6!important;font-size:11px!important; }
+.hint strong { color:var(--text); }
+.status { border:1px solid var(--line);background:var(--soft);border-radius:10px;padding:11px 13px;margin:5px 0!important;font-size:12px!important;line-height:1.6!important;overflow-wrap:anywhere; }
+.statusSuccess { border-color:var(--accent);background:var(--accent-bg);color:var(--accent-text)!important; }
+.statusError { border-color:#c65b67;background:var(--surface);color:#c65b67!important; }
+.passwordGroup { display:grid;gap:9px; }
+.passwordGroup label { margin:8px 0 0; }
+.successPanel { background:var(--accent-bg);border:1px solid var(--accent);border-radius:14px;padding:20px;margin-top:24px; }
+.successPanel h2 { color:var(--text);font-size:18px;margin:0 0 8px; }
+.successPanel p { margin:0 0 15px;color:var(--muted);line-height:1.55; }
+.successPanel a { display:inline-flex;align-items:center;justify-content:center;padding:11px 14px;background:var(--accent);border-radius:9px;color:#1b1e27;text-decoration:none;font-weight:800;font-size:12px;min-height:42px; }
+@media(max-width:480px) {
+ .inboxCard { padding:13px 12px;gap:10px; }
+ .resendPanel { padding:12px; }
+ .codeInput { font-size:24px!important;letter-spacing:7px;padding-left:15px!important; }
+ .stepper { gap:7px;font-size:10px; }
+ .stepLine { flex-basis:17px; }
+}

@@ -12,6 +12,8 @@ import java.util.Map;
 import java.util.Optional;
 import javax.crypto.Mac;
 import javax.crypto.SecretKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 @ConditionalOnProperty(prefix = "pulseos.auth", name = "enabled", havingValue = "true")
 public class RegistrationController {
+    private static final Logger log = LoggerFactory.getLogger(RegistrationController.class);
     private final StaffAccountRepository accounts;
     private final PendingRegistrationRepository pending;
     private final PasswordEncoder passwordEncoder;
@@ -120,6 +123,8 @@ public class RegistrationController {
         }
         // Mail failure rolls back the pending challenge; no account is activated.
         mailer.send(email, code);
+        // Provider acceptance, not a delivery/read receipt. Never log codes or emails.
+        log.info("Initial signup verification accepted by email provider");
         return ResponseEntity.accepted()
             .header("Cache-Control", "no-store")
             .body(Map.of("message", "Verification code sent. Check your email.",
@@ -154,7 +159,11 @@ public class RegistrationController {
         pending.saveAndFlush(challenge);
         try {
             mailer.send(email, code);
+            log.info("Signup resend accepted by email provider");
         } catch (ResponseStatusException exception) {
+            // Keep unknown-account and delivery-error responses indistinguishable.
+            // Render logs show the safe failure category, not the recipient or code.
+            log.warn("Signup resend could not be accepted by email provider");
             TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
         }
         return ResponseEntity.accepted().header("Cache-Control", "no-store")

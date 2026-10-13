@@ -32,3 +32,14 @@
 .auth-password-toggle:hover{border-color:var(--line);background:var(--accent-bg)}
 .auth-password-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .auth-password-toggle svg{flex-shrink:0}
+
+/* Accessible and consistent login/signup/recovery input and CTA controls. */
+.auth-form { min-width:0; }
+.auth-form input { width:100%;min-width:0; }
+.auth-form .auth-password-toggle { width:auto; }
+.auth-submit { display:inline-flex;align-items:center;justify-content:center;line-height:1.4;text-align:center;transition:background-color .16s ease,transform .16s ease; }
+.auth-submit:hover:not(:disabled) { background:#f1c956; }
+.auth-submit:active:not(:disabled) { transform:translateY(1px); }
+.auth-submit:disabled { cursor:not-allowed; }
+.auth-form button:focus-visible { outline:2px solid var(--accent-text);outline-offset:3px; }
+@media (prefers-reduced-motion:reduce) { .auth-submit { transition:none; } }

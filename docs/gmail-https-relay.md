@@ -48,6 +48,20 @@ If the email relay is **already sending signup codes**, replace the code in the 
 
 The updated script sends **branded amber/charcoal HTML emails** for both account verification and password recovery, with a plain-text fallback. The existing Render relay URL and secret remain unchanged. Older versions will still accept signup codes, but will not show the new HTML design or the distinct password-reset subject.
 
+## Check which email template is actually running
+
+After you **update the existing Google Apps Script deployment** (Deploy → Manage deployments → Edit → New version → Deploy), open your deployed `https://script.google.com/macros/s/.../exec` URL in a browser. The new `GET` endpoint displays only:
+
+```text
+PulseOS email relay: styled HTML v4
+```
+
+If it instead shows a Google error or something else, the **published Web app** has not been updated. The GitHub repository and Render cannot update a Google Apps Script deployment owned by your Google account. No Render secret or Gmail app password needs changing.
+
+This release adds a short **non-secret request reference** to each email subject so Gmail is less likely to hide a new verification email inside an older conversation. Never put the actual verification code in the email subject. Each email has both a designed HTML body (`htmlBody`) and a plaintext fallback (`body`). Google may still delay delivery after its email-sending API accepts a message; inbox delivery cannot be guaranteed by PulseOS.
+
+Backend logs now distinguish **initial signup accepted by email provider** from **signup resend accepted by email provider**, without exposing recipient emails or OTPs. If only a resend arrives, check the original message's Spam/Promotions and Gmail threading, as well as Apps Script → Executions and Render API logs around both requests.
+
 ## Troubleshooting
 
 - `503`: the sender isn't configured, Apps Script hasn't been authorized/deployed, the shared key differs, the Gmail account is over quota, or Google is unavailable. Recheck the Script's **Executions** page (it does not log codes) and Render application logs.
