@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 type PatientOption = { id: string; fullName: string };
 import styles from "./appointment-manager.module.css";
+import AppointmentCalendar from "./appointment-calendar";
 
 type VisitType = "FOLLOW_UP" | "ANNUAL_EXAM" | "CONSULTATION";
 type Appointment = {
@@ -101,6 +102,25 @@ export default function AppointmentManager() {
     finally{setSaving(false);}
   }
 
+  function pickBookingDate(day:string){
+    const now=new Date();
+    const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),
+      String(now.getDate()).padStart(2,"0")].join("-");
+    const existing=iframeHour(datetime);
+    // For today's date, choose the next full hour to avoid suggesting a past time.
+    const candidate=day===today?new Date(now.getTime()+3600000):new Date(day+"T10:00:00");
+    if(day===today)candidate.setMinutes(0,0,0);
+    const proposed=day===today?
+      String(candidate.getHours()).padStart(2,"0")+":00":
+      existing;
+    setDatetime(day+"T"+proposed);
+    document.getElementById("booking-time")?.focus();
+  }
+  function iframeHour(value:string){
+    const time=value.split("T")[1];
+    return time&&/^([01]\d|2[0-3]):[0-5]\d$/.test(time)?time:"10:00";
+  }
+
   async function schedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -190,6 +210,13 @@ export default function AppointmentManager() {
       </section>
       <section className={styles.listCard}>
         <div className={styles.listHead}><div><h2>Appointments</h2><p>{total} upcoming scheduled visit(s)</p></div><button type="button" onClick={()=>{setLoading(true);void reload();}} disabled={loading}>Refresh</button></div>
+        <AppointmentCalendar title="Clinician appointment calendar"
+          entries={shown.map(item=>({
+            id:item.id,scheduledAt:item.scheduledAt,status:item.status,
+            label:patients.find(patient=>patient.id===item.patientId)?.fullName??"Demo patient",
+            description:visitNames[item.visitType]
+          }))}
+          onScheduleDate={pickBookingDate}/>
         <div className={styles.filters}>
           <label htmlFor="appointment-search">Search
             <input id="appointment-search" type="search" value={query} onChange={event=>setQuery(event.target.value)}

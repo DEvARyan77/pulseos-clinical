@@ -2,6 +2,8 @@
 import Link from "next/link";
 import {useEffect,useState} from "react";
 import styles from "./patient-portal.module.css";
+import AppointmentCalendar from "./appointment-calendar";
+import type {CalendarEntry,CalendarStatus} from "./appointment-calendar";
 type Visit={id:string;scheduledAt:string;visitType:string;status:string};
 type RecordMatch={id:string;fullName:string;clinicianUsername:string;status:string;appointments:Visit[]};
 type Summary={username:string;email:string;records:RecordMatch[]};
@@ -21,6 +23,12 @@ export default function PatientPortal(){
     {error&&<p className={styles.error} role="alert">{error}</p>}
     {!data&&!error&&<p>Loading your appointments…</p>}
     {data&&<><p className={styles.account}>Signed in as {data.username} · {data.email}</p>
+      {data.records.some(record=>record.appointments.length>0)&&
+        <AppointmentCalendar title="My appointment calendar"
+          entries={data.records.flatMap(record=>record.appointments.map(visit=>({
+            id:visit.id,scheduledAt:visit.scheduledAt,status:visit.status as CalendarStatus,
+            label:record.fullName,description:visit.visitType.replaceAll("_"," ")
+          } satisfies CalendarEntry)))}/>} 
       {!data.records.length&&<div className={styles.card}>
         <h2>No linked appointments yet</h2><p>Ask your demo clinician to create a patient record with your verified test email and schedule an appointment.</p>
       </div>}

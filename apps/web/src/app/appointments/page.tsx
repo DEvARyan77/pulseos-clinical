@@ -22,7 +22,7 @@ export default async function AppointmentsPage() {
       <div className={styles.content}>
         <p className={styles.overline}>PULSEOS · DEMO OPERATIONS</p>
         <h1>Appointment scheduling</h1>
-        <p className={styles.subtitle}>Schedule, search, reschedule and manage visit stages for patients in your private test registry.</p>
+        <p className={styles.subtitle}>Schedule, search, reschedule and manage your visits using the interactive appointment calendar.</p>
         {enabled ? <AppointmentManager/> : (
           <div className={styles.disabled}>
             <h2>Staff authentication is not enabled</h2>
