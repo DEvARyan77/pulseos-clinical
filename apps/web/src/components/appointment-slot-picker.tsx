@@ -1,5 +1,6 @@
 "use client";
 
+import {useState} from "react";
 import styles from "./appointment-slot-picker.module.css";
 
 export type SlotVisit={id:string;scheduledAt:string;status:string};
@@ -17,7 +18,8 @@ export default function AppointmentSlotPicker({value,onSelect,visits,excludeId}:
   const day=value.slice(0,10);
   const selectedDay=/^\d{4}-\d{2}-\d{2}$/.test(day)?day:"";
   if(!selectedDay)return <p className={styles.hint}>Choose a date to see available time slots.</p>;
-  const now=Date.now();
+  // Capture current time once at mount; avoid reading an impure clock in render.
+  const [now]=useState(()=>Date.now());
   const slots=Array.from({length:18},(_,index)=>{
     const hour=9+Math.floor(index/2),minute=index%2?30:0;
     const label=`${pad(hour)}:${pad(minute)}`;
