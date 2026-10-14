@@ -4,6 +4,7 @@ import {useEffect,useState} from "react";
 import styles from "./patient-portal.module.css";
 import AppointmentCalendar from "./appointment-calendar";
 import type {CalendarEntry,CalendarStatus} from "./appointment-calendar";
+import {downloadCalendarIcs} from "@/lib/calendar-export";
 type Visit={id:string;scheduledAt:string;visitType:string;status:string};
 type RecordMatch={id:string;fullName:string;clinicianUsername:string;status:string;appointments:Visit[]};
 type Summary={username:string;email:string;records:RecordMatch[]};
@@ -41,6 +42,10 @@ export default function PatientPortal(){
           <strong>{visit.visitType.replaceAll("_"," ")}</strong>
           <span>{new Date(visit.scheduledAt).toLocaleString()}</span>
           <span>{visit.status.replaceAll("_"," ")}</span>
+          <button type="button" className={styles.exportButton} onClick={()=>downloadCalendarIcs([{
+            id:visit.id,scheduledAt:visit.scheduledAt,status:visit.status,
+            label:record.fullName,description:visit.visitType.replaceAll("_"," ")
+          }],`pulseos-visit-${visit.id}.ics`,"PulseOS demo visit")}>Add to calendar (.ics)</button>
           {visit.status==="SCHEDULED"&&<Link href={`/patient/checkin?appointment=${visit.id}`}>Check in using QR</Link>}
         </div>)}
       </article>)}

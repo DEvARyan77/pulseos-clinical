@@ -32,5 +32,5 @@ jobs:
       - run: npm install --no-audit --no-fund
       - run: npm run typecheck
       - run: npm run lint
-      - run: node --test ../../scripts/tests/google-mail-relay.test.cjs
+      - run: node --test ../../scripts/tests/*.test.cjs
       - run: npm run build

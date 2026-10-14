@@ -5,6 +5,7 @@ type PatientOption = { id: string; fullName: string };
 import styles from "./appointment-manager.module.css";
 import AppointmentCalendar from "./appointment-calendar";
 import AppointmentSlotPicker from "./appointment-slot-picker";
+import {downloadCalendarIcs} from "@/lib/calendar-export";
 
 type VisitType = "FOLLOW_UP" | "ANNUAL_EXAM" | "CONSULTATION";
 type Appointment = {
@@ -254,6 +255,10 @@ export default function AppointmentManager() {
                 <span className={item.status === "CANCELLED" ? styles.cancelled : styles.active}>{item.status.replaceAll("_"," ")}</span>
               </div>
               <div className={styles.actions}>
+                <button type="button" onClick={()=>downloadCalendarIcs([{
+                  id:item.id,scheduledAt:item.scheduledAt,status:item.status,
+                  label:patient?.fullName??"Demo patient",description:visitNames[item.visitType]
+                }],`pulseos-visit-${item.id}.ics`,"PulseOS demo visit")}>Add to calendar (.ics)</button>
                 {(item.status === "CHECKED_IN" || item.status === "IN_CARE") && <button type="button" disabled={saving} onClick={()=>void advance(item.id)}>Advance stage</button>}
                 {item.status === "SCHEDULED" && <>
                   <button type="button" disabled={saving} onClick={()=>startReschedule(item)}>Reschedule</button>

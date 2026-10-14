@@ -14,6 +14,7 @@ Next.js 16, Spring Boot 4.1, PostgreSQL, JWT authentication, patient records, ap
 - Existing staff accounts continue to work
 - User-scoped patient records, editing, visit notes, timestamps and change history
 - Authenticated PostgreSQL appointment scheduling for patients in the user's test registry
+- Clinician and verified patient appointment calendars with private `.ics` downloads (whole displayed schedule, selected day, or one visit). Imports are manual snapshots, not automatic Google/Outlook sync; export again after a change.
 - Logout and HttpOnly, short-lived JWT session cookie
 
 ## Email delivery configuration

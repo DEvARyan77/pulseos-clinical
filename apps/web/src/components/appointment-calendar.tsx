@@ -3,6 +3,7 @@
 import {useMemo,useState} from "react";
 import {CalendarDays,ChevronLeft,ChevronRight} from "lucide-react";
 import styles from "./appointment-calendar.module.css";
+import {downloadCalendarIcs} from "@/lib/calendar-export";
 
 export type CalendarStatus="SCHEDULED"|"CHECKED_IN"|"IN_CARE"|"COMPLETED"|"CANCELLED";
 export type CalendarEntry={
@@ -76,6 +77,7 @@ export default function AppointmentCalendar({entries,onScheduleDate,title="Appoi
         <div><h3>{title}</h3><p>Click a day to review visits</p></div>
       </div>
       <div className={styles.controls}>
+        {entries.length>0&&<button type="button" onClick={()=>downloadCalendarIcs(entries)}>Export schedule (.ics)</button>}
         <button type="button" onClick={showToday}>Today</button>
         <button type="button" onClick={()=>moveMonth(-1)} aria-label="Previous month"><ChevronLeft size={17}/></button>
         <strong aria-live="polite">{month.toLocaleDateString(undefined,{month:"long",year:"numeric"})}</strong>
@@ -110,9 +112,11 @@ export default function AppointmentCalendar({entries,onScheduleDate,title="Appoi
     <div className={styles.agenda}>
       <div className={styles.agendaHead}>
         <div><strong>{selectedLabel}</strong><p>{chosen.length} appointment{chosen.length===1?"":"s"}</p></div>
+        {chosen.length>0&&<button type="button" onClick={()=>downloadCalendarIcs(chosen,`pulseos-${selectedDay}.ics`)}>Export day (.ics)</button>}
         {onScheduleDate&&selectedDay>=today&&
           <button type="button" onClick={()=>onScheduleDate(selectedDay)}>Schedule on this day</button>}
       </div>
+      <p className={styles.empty}>Calendar downloads are manual snapshots. Export again after a visit changes.</p>
       {chosen.length===0?<p className={styles.empty}>No appointments on this date.</p>:
         <ul className={styles.agendaList}>{chosen.map(visit=>
           <li key={visit.id}>
