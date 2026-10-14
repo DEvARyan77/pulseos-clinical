@@ -31,13 +31,16 @@ export async function clinicalProxy(request: NextRequest, path: string, method: 
   // Ordinary in-app notifications do not need the longer mail timeout.
   const patientEmailRequest=patientNotificationRequest&&body!==undefined&&
     (JSON.parse(body) as {channel?: unknown}).channel==="EMAIL";
+  // Rescheduling also attempts an optional Google Script QR email.
+  const appointmentReschedule=method==="PATCH"&&
+    /^\/api\/v1\/demo-appointments\/[0-9a-fA-F-]{36}\/reschedule$/.test(path);
   try {
     const response=await fetch(`${process.env.API_INTERNAL_URL ?? "http://localhost:8080"}${path}`,{
       method,
       headers:{Authorization:`Bearer ${token}`,...(body?{"Content-Type":"application/json"}:{})},
       ...(body?{body}:{}),
       cache:"no-store",
-      signal:AbortSignal.timeout(patientEmailRequest?65000:9000)
+      signal:AbortSignal.timeout(patientEmailRequest||appointmentReschedule?65000:9000)
     });
     const raw=await response.text();
     let content:unknown={};
@@ -59,7 +62,9 @@ export async function clinicalProxy(request: NextRequest, path: string, method: 
     return NextResponse.json(content,{status:response.status,headers:{"Cache-Control":"no-store"}});
   }catch(error){
     const timedOut=error instanceof Error && (error.name==="TimeoutError" || error.name==="AbortError");
-    return NextResponse.json({error:patientEmailRequest&&timedOut
+    return NextResponse.json({error:timedOut&&appointmentReschedule
+      ?"Appointment reschedule timed out. Check the appointment list before retrying to avoid duplicate email notices."
+      :patientEmailRequest&&timedOut
       ?"Patient notification request timed out. Delivery may still be processing. Check notification history before retrying."
       :"Clinical API unavailable"},{status:503});
   }
