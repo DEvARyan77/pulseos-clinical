@@ -15,8 +15,10 @@ public interface DemoAppointmentRepository extends JpaRepository<DemoAppointment
 
     // Serialize writes to the same clinician's calendar within a database transaction.
     // Prevent simultaneous create/reschedule requests from bypassing conflict checks.
-    @Query(value="SELECT pg_advisory_xact_lock(hashtext(:owner))",nativeQuery=true)
-    Object lockSchedule(@Param("owner") String owner);
+    // Cast the void-returning PostgreSQL lock function to a boolean expression
+    // so JDBC/Hibernate can map the result without an unknown SQL type.
+    @Query(value="SELECT pg_advisory_xact_lock(hashtext(:owner)) IS NULL",nativeQuery=true)
+    Boolean lockSchedule(@Param("owner") String owner);
 
     List<DemoAppointment> findByCreatedByAndStatusInAndScheduledAtAfterAndScheduledAtBefore(
         String createdBy, List<DemoAppointment.Status> statuses, Instant after, Instant before);
