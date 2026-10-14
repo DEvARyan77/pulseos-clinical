@@ -28,21 +28,58 @@ public class PatientController {
     this(patients,notes,audits,null);
   }
   public record PatientInput(
-    @NotBlank @Size(max=120) String fullName,
+    @NotBlank @Size(min=2,max=120)
+    @Pattern(regexp="^[\\p{L}][\\p{L}\\p{M} .'-]{1,119}$",
+      message="Use a fictional name with letters and ordinary name punctuation")
+    String fullName,
     @NotNull @Min(0) @Max(120) Integer age,
-    @NotBlank @Size(max=32) @Pattern(regexp="^(Male|Female|Non-binary|Other|Prefer not to say|Unspecified)$", message="Select a valid gender") String gender,
-    @NotBlank @Size(max=240) String reason,
-    @NotBlank @Size(max=32) String room,
+    @NotBlank @Size(max=32)
+    @Pattern(regexp="^(Male|Female|Non-binary|Other|Prefer not to say|Unspecified)$",
+      message="Select a valid gender")
+    String gender,
+    @NotBlank @Size(min=3,max=240)
+    @Pattern(regexp="^[^<>\\p{Cntrl}]+$",message="Reason contains invalid characters")
+    String reason,
+    @NotBlank @Size(max=32)
+    @Pattern(regexp="^[\\p{L}\\p{N}][\\p{L}\\p{N} ./#-]*$",
+      message="Use letters, numbers and ordinary room separators")
+    String room,
     @NotNull PatientRecord.Status status,
-    @NotNull @Size(max=16) String bp,
-    @Min(0) @Max(250) Integer heartRate,
-    @Min(0) @Max(100) Integer oxygen,
-    @NotNull @Size(max=16) String temperature,
+    @NotNull @Pattern(regexp="^(—|[0-9]{2,3}/[0-9]{2,3})$",
+      message="Use systolic/diastolic (for example 120/80), or — if unknown")
+    String bp,
+    @Min(20) @Max(250) Integer heartRate,
+    @Min(50) @Max(100) Integer oxygen,
+    @NotNull
+    @Pattern(regexp="^(—|[0-9]{2,3}(?:\\.[0-9])?(?:\\s?°?[CF])?)$",
+      message="Use 36.8°C, 98.6°F or — if unknown")
+    String temperature,
     @NotNull @Size(max=500) String allergies,
     @NotNull @Size(max=500) String diagnoses,
     @NotNull @Size(max=500) String medications,
     @Email @Size(max=254) String contactEmail
-  ) {}
+  ) {
+    @AssertTrue(message="Blood pressure values must be plausible: 60–250/30–150, systolic above diastolic")
+    public boolean isBloodPressureValid() {
+      if (bp == null || "—".equals(bp) || !bp.matches("[0-9]{2,3}/[0-9]{2,3}")) return true;
+      String[] values = bp.split("/");
+      int systolic = Integer.parseInt(values[0]), diastolic = Integer.parseInt(values[1]);
+      return systolic >= 60 && systolic <= 250 && diastolic >= 30 &&
+          diastolic <= 150 && systolic > diastolic;
+    }
+    @AssertTrue(message="Temperature must be 30–45°C or 86–113°F")
+    public boolean isTemperatureValid() {
+      if (temperature == null || "—".equals(temperature) ||
+          !temperature.matches("[0-9]{2,3}(?:\\.[0-9])?(?:\\s?°?[CF])?")) return true;
+      String cleaned = temperature.strip().replace(" ", "").replace("°", "");
+      boolean celsius = cleaned.endsWith("C");
+      boolean fahrenheit = cleaned.endsWith("F");
+      String numeric = celsius || fahrenheit ? cleaned.substring(0,cleaned.length()-1) : cleaned;
+      double value = Double.parseDouble(numeric);
+      if (!celsius && !fahrenheit) celsius = value < 60;
+      return celsius ? value >= 30 && value <= 45 : value >= 86 && value <= 113;
+    }
+  }
   public record NoteInput(@NotBlank @Size(max=4000) String content) {}
   private PatientRecord owned(UUID id,String owner){
     return patients.findByIdAndOwner(id,owner).orElseThrow(()->new ResponseStatusException(HttpStatus.NOT_FOUND,"Patient not found"));

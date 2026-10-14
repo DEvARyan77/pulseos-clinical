@@ -26,6 +26,43 @@ const fields:[keyof PatientInput,string,number][]=[
 ];
 const statuses:Record<Status,string>={WAITING:"Waiting",IN_CARE:"In care",COMPLETED:"Completed"};
 function readable(iso:string){return new Date(iso).toLocaleString();}
+
+/** Match backend rules before sending a record. API validation remains authoritative. */
+function validatePatient(record:PatientInput):string|null{
+ const name=record.fullName.trim();
+ if(!/^\p{L}[\p{L}\p{M} .'-]{1,119}$/u.test(name))
+  return "Enter a fictional name (2–120 characters; letters and name punctuation only).";
+ if(!Number.isInteger(record.age)||record.age<0||record.age>120)
+  return "Age must be a whole number between 0 and 120.";
+ if(!["Unspecified","Female","Male","Non-binary","Other","Prefer not to say"].includes(record.gender))
+  return "Select a valid gender option.";
+ if(record.reason.trim().length<3||record.reason.length>240||/[<>\x00-\x1f\x7f]/.test(record.reason))
+  return "Enter a visit reason of 3–240 characters without markup or control characters.";
+ if(!/^[\p{L}\p{N}][\p{L}\p{N} ./#-]*$/u.test(record.room.trim())||record.room.length>32)
+  return "Room must contain 1–32 letters, numbers or ordinary separators.";
+ if(record.bp!=="—"){
+  const match=/^(\d{2,3})\/(\d{2,3})$/.exec(record.bp.trim());
+  if(!match)return "Enter blood pressure like 120/80, or — if unknown.";
+  const sys=Number(match[1]),dia=Number(match[2]);
+  if(sys<60||sys>250||dia<30||dia>150||sys<=dia)
+   return "Blood pressure must be 60–250/30–150, with systolic above diastolic.";
+ }
+ if(record.heartRate!==null&&(!Number.isInteger(record.heartRate)||record.heartRate<20||record.heartRate>250))
+  return "Heart rate must be 20–250 bpm, or left empty.";
+ if(record.oxygen!==null&&(!Number.isInteger(record.oxygen)||record.oxygen<50||record.oxygen>100))
+  return "Oxygen saturation must be 50–100%, or left empty.";
+ if(record.temperature!=="—"){
+  const match=/^(\d{2,3}(?:\.\d)?)(?:\s?°?([CF]))?$/.exec(record.temperature.trim());
+  if(!match)return "Use temperature like 36.8°C, 98.6°F, or — if unknown.";
+  const value=Number(match[1]),isCelsius=match[2]==="C"||(match[2]===undefined&&value<60);
+  if(isCelsius?(value<30||value>45):(value<86||value>113))
+   return "Temperature must be 30–45°C or 86–113°F.";
+ }
+ if(record.contactEmail && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.contactEmail)||record.contactEmail.length>254))
+  return "Enter a valid demo contact email address.";
+ return null;
+}
+
 async function jsonRequest<T>(url:string,init?:RequestInit):Promise<T>{
  const response=await fetch(url,{...init,cache:"no-store"});
  const body=await response.json() as T&{error?:string;message?:string};
@@ -97,7 +134,10 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
   setForm(old=>({...old,[key]:key==="age"?Number(value):key==="heartRate"||key==="oxygen"?(value===""?null:Number(value)):value}));
  }
  async function savePatient(event:FormEvent<HTMLFormElement>){
-  event.preventDefault();setError("");setMessage("");setBusy(true);
+  event.preventDefault();setError("");setMessage("");
+  const invalid=validatePatient(form);
+  if(invalid){setError(invalid);return;}
+  setBusy(true);
   try{
    const url=mode==="new"?"/api/patients":`/api/patients/${selected}`;
    const saved=await jsonRequest<Patient>(url,{method:mode==="new"?"POST":"PUT",
@@ -203,10 +243,11 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
              placeholder="approved-demo@example.com" onChange={e=>setForm(old=>({...old,contactEmail:e.target.value||null}))}/>
          </label>
          <label>Age <input type="number" min="0" max="120" value={form.age} onChange={e=>editValue("age",e.target.value)} required/></label>
-         <label>Heart rate (bpm)<input type="number" min="0" max="250" value={form.heartRate??""} onChange={e=>editValue("heartRate",e.target.value)}/></label>
-         <label>Oxygen saturation (%)<input type="number" min="0" max="100" value={form.oxygen??""} onChange={e=>editValue("oxygen",e.target.value)}/></label>
+         <label>Heart rate (bpm)<input type="number" min="20" max="250" value={form.heartRate??""} onChange={e=>editValue("heartRate",e.target.value)}/></label>
+         <label>Oxygen saturation (%)<input type="number" min="50" max="100" value={form.oxygen??""} onChange={e=>editValue("oxygen",e.target.value)}/></label>
          <label>Status<select value={form.status} onChange={e=>editValue("status",e.target.value)}>{Object.entries(statuses).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
         </div>
+        <p className={styles.helper}>Blood pressure: 120/80 or —. Temperature: 36.8°C, 98.6°F or —. Leave unknown heart rate and oxygen values blank.</p>
         <button disabled={busy} className={styles.primary} type="submit">{busy?"Saving…":mode==="new"?"Create patient":"Save patient changes"}</button>
        </form>
       </>:active?<>

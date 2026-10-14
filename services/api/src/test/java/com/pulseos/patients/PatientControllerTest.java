@@ -38,6 +38,37 @@ class PatientControllerTest {
       assertThat(validator.validate(valid)).isEmpty();
     }
   }
+
+  @Test void rejectsMalformedVitalsAndPatientIdentifiers() {
+    try (var factory=Validation.buildDefaultValidatorFactory()) {
+      var validator=factory.getValidator();
+      var invalid=new PatientController.PatientInput("A12345",30,"Female","Demo visit",
+        "Room 1",PatientRecord.Status.WAITING,"999/999",0,10,"900 F","","","",null);
+      var fields=validator.validate(invalid).stream()
+        .map(violation->violation.getPropertyPath().toString())
+        .collect(java.util.stream.Collectors.toSet());
+      assertThat(fields).contains("fullName","bloodPressureValid","heartRate","oxygen","temperatureValid");
+    }
+  }
+
+  @Test void rejectsBadFormattingAndAcceptsUnspecifiedVitals() {
+    try (var factory=Validation.buildDefaultValidatorFactory()) {
+      var validator=factory.getValidator();
+      var invalid=new PatientController.PatientInput("Fictional User",30,"Female","Hi",
+        "Room <script>",PatientRecord.Status.WAITING,"120/??",null,null,"mystery","","","",null);
+      var fields=validator.validate(invalid).stream()
+        .map(violation->violation.getPropertyPath().toString())
+        .collect(java.util.stream.Collectors.toSet());
+      assertThat(fields).contains("reason","room","bp","temperature");
+
+      var valid=new PatientController.PatientInput("Fictional User",0,"Unspecified","New visit",
+        "Room A-12",PatientRecord.Status.WAITING,"120/80",72,98,"36.8°C","","","",null);
+      assertThat(validator.validate(valid)).isEmpty();
+      var unknown=new PatientController.PatientInput("Demo Person",30,"Non-binary","Follow up",
+        "Unassigned",PatientRecord.Status.WAITING,"—",null,null,"—","","","",null);
+      assertThat(validator.validate(unknown)).isEmpty();
+    }
+  }
   @Test void listsOnlyOwnedPatients(){
     when(staff.getSubject()).thenReturn("staff-a");
     when(patients.findByOwnerOrderByUpdatedAtDesc("staff-a")).thenReturn(java.util.List.of());
