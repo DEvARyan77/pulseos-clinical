@@ -11,3 +11,6 @@
 .rescheduleForm button{min-height:39px;cursor:pointer}
 .rescheduleForm p{flex-basis:100%;font-size:11px;color:var(--muted);line-height:1.5}
 @media(max-width:580px){.filters{grid-template-columns:1fr}.actions{width:100%}.rescheduleForm button{flex:1}.list li>div:first-child{width:100%}}
+
+/* The reschedule panel shares the same slot picker used for new visits. */
+.rescheduleForm>div{flex-basis:100%}

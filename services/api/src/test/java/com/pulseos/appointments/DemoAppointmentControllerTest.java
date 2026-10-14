@@ -87,6 +87,70 @@ class DemoAppointmentControllerTest {
         verify(repository,never()).saveAndFlush(any());
     }
 
+
+    @Test
+    void createRejectsAConflictingVisitAndDoesNotSendEmail() {
+        var repository=mock(DemoAppointmentRepository.class);
+        var controller=new DemoAppointmentController(repository,mock(PatientRepository.class));
+        var jwt=mock(Jwt.class);
+        when(jwt.getSubject()).thenReturn("clinician");
+        var at=Instant.now().plusSeconds(86400);
+        var alreadyBooked=new DemoAppointment("clinician","DEMO-1002",at.plusSeconds(600),
+            DemoAppointment.VisitType.CONSULTATION);
+        when(repository.findByCreatedByAndStatusInAndScheduledAtAfterAndScheduledAtBefore(
+            eq("clinician"),anyList(),any(Instant.class),any(Instant.class)))
+            .thenReturn(List.of(alreadyBooked));
+        var result=controller.create(jwt,new DemoAppointmentController.CreateAppointmentRequest(
+            "DEMO-1001",at,DemoAppointment.VisitType.FOLLOW_UP));
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        verify(repository).lockSchedule("clinician");
+        verify(repository,never()).saveAndFlush(any());
+    }
+
+    @Test
+    void rescheduleRejectsBusyTimeButAllowsItsOwnBooking() {
+        var repository=mock(DemoAppointmentRepository.class);
+        var controller=new DemoAppointmentController(repository,mock(PatientRepository.class));
+        var jwt=mock(Jwt.class);
+        when(jwt.getSubject()).thenReturn("clinician");
+        var id=UUID.randomUUID();
+        var row=new DemoAppointment("clinician","DEMO-1001",Instant.now().plusSeconds(86400),
+            DemoAppointment.VisitType.CONSULTATION);
+        var newTime=Instant.now().plusSeconds(172800);
+        when(repository.findByIdAndCreatedBy(id,"clinician")).thenReturn(Optional.of(row));
+        var another=new DemoAppointment("clinician","DEMO-1002",newTime.plusSeconds(900),
+            DemoAppointment.VisitType.FOLLOW_UP);
+        when(repository.findByCreatedByAndStatusInAndScheduledAtAfterAndScheduledAtBefore(
+            eq("clinician"),anyList(),any(Instant.class),any(Instant.class)))
+            .thenReturn(List.of(another));
+        assertThat(controller.reschedule(jwt,id,
+            new DemoAppointmentController.RescheduleAppointmentRequest(newTime)).getStatusCode())
+            .isEqualTo(HttpStatus.CONFLICT);
+        verify(repository,never()).saveAndFlush(any());
+    }
+
+    @Test
+    void conflictCheckIgnoresTheAppointmentBeingMoved() {
+        var repository=mock(DemoAppointmentRepository.class);
+        var controller=new DemoAppointmentController(repository,mock(PatientRepository.class));
+        var jwt=mock(Jwt.class);
+        when(jwt.getSubject()).thenReturn("clinician");
+        var id=UUID.randomUUID();
+        var row=new DemoAppointment("clinician","DEMO-1001",Instant.now().plusSeconds(86400),
+            DemoAppointment.VisitType.FOLLOW_UP);
+        var next=row.getScheduledAt().plusSeconds(900);
+        when(repository.findByIdAndCreatedBy(id,"clinician")).thenReturn(Optional.of(row));
+        // Real rows have IDs: the existing row must not conflict with itself.
+        org.springframework.test.util.ReflectionTestUtils.setField(row,"id",id);
+        when(repository.findByCreatedByAndStatusInAndScheduledAtAfterAndScheduledAtBefore(
+            eq("clinician"),anyList(),any(Instant.class),any(Instant.class)))
+            .thenReturn(List.of(row));
+        when(repository.saveAndFlush(row)).thenReturn(row);
+        assertThat(controller.reschedule(jwt,id,
+            new DemoAppointmentController.RescheduleAppointmentRequest(next)).getStatusCode())
+            .isEqualTo(HttpStatus.OK);
+        verify(repository).saveAndFlush(row);
+    }
     @Test
     void appointmentsAreQueriedPerSignedInStaffAccount() {
         var repository = mock(DemoAppointmentRepository.class);

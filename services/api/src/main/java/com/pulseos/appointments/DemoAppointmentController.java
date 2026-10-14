@@ -25,6 +25,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/demo-appointments")
 @ConditionalOnProperty(prefix = "pulseos.auth", name = "enabled", havingValue = "true")
 public class DemoAppointmentController {
+  private static final List<DemoAppointment.Status> BUSY_STATUSES=List.of(
+    DemoAppointment.Status.SCHEDULED,DemoAppointment.Status.CHECKED_IN,
+    DemoAppointment.Status.IN_CARE);
+  private static final String BOOKING_CONFLICT=
+    "This clinician already has an appointment within 30 minutes of the selected time. Choose another slot.";
   private static final Set<String> LEGACY_DEMO_IDS=Set.of(
     "DEMO-1001","DEMO-1002","DEMO-1003","DEMO-1004","DEMO-1005","DEMO-1006","DEMO-1007");
   private final DemoAppointmentRepository appointments;
@@ -46,12 +51,20 @@ public class DemoAppointmentController {
       return new AppointmentResponse(row.getId(),row.getPatientId(),row.getScheduledAt(),row.getVisitType(),row.getStatus());
     }
   }
+  /** Applies to all authenticated clinician writes, regardless of client-side slot hints. */
+  private boolean conflicts(String owner,Instant when,UUID excludingId){
+    return appointments.findByCreatedByAndStatusInAndScheduledAtAfterAndScheduledAtBefore(
+      owner,BUSY_STATUSES,when.minus(30,ChronoUnit.MINUTES),
+      when.plus(30,ChronoUnit.MINUTES)).stream()
+      .anyMatch(visit->excludingId==null||!excludingId.equals(visit.getId()));
+  }
   @GetMapping
   public List<AppointmentResponse> list(@AuthenticationPrincipal Jwt jwt){
     return appointments.findByCreatedByOrderByScheduledAtAsc(jwt.getSubject()).stream()
       .map(AppointmentResponse::from).toList();
   }
   @PostMapping
+  @Transactional
   public ResponseEntity<?> create(@AuthenticationPrincipal Jwt jwt,@Valid @RequestBody CreateAppointmentRequest request){
     boolean valid=LEGACY_DEMO_IDS.contains(request.patientId());
     PatientRecord recipient=null;
@@ -64,6 +77,9 @@ public class DemoAppointmentController {
     if(!valid)return ResponseEntity.badRequest().body(Map.of("error","Select a patient from your own registry"));
     if(request.scheduledAt().isAfter(Instant.now().plus(365,ChronoUnit.DAYS)))
       return ResponseEntity.badRequest().body(Map.of("error","Date must be within the next year"));
+    appointments.lockSchedule(jwt.getSubject());
+    if(conflicts(jwt.getSubject(),request.scheduledAt(),null))
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error",BOOKING_CONFLICT));
     var row=appointments.saveAndFlush(new DemoAppointment(
       jwt.getSubject(),request.patientId(),request.scheduledAt(),request.visitType()));
     if(recipient!=null&&notices!=null)notices.sendAppointment(row,recipient);
@@ -74,6 +90,7 @@ public class DemoAppointmentController {
   @Transactional
   public ResponseEntity<?> reschedule(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id,
       @Valid @RequestBody RescheduleAppointmentRequest request){
+    appointments.lockSchedule(jwt.getSubject());
     DemoAppointment row=appointments.findByIdAndCreatedBy(id,jwt.getSubject())
       .orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Appointment not found"));
     if(row.getStatus()!=DemoAppointment.Status.SCHEDULED)
@@ -82,6 +99,8 @@ public class DemoAppointmentController {
       return ResponseEntity.badRequest().body(Map.of("error","Date must be within the next year"));
     if(row.getScheduledAt().equals(request.scheduledAt()))
       return ResponseEntity.badRequest().body(Map.of("error","Select a different appointment time"));
+    if(conflicts(jwt.getSubject(),request.scheduledAt(),id))
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error",BOOKING_CONFLICT));
     row.reschedule(request.scheduledAt());
     appointments.saveAndFlush(row);
     // Refresh the appointment QR email only for an approved fictional test address.

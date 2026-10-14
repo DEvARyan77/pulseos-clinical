@@ -22,7 +22,7 @@ export default async function AppointmentsPage() {
       <div className={styles.content}>
         <p className={styles.overline}>PULSEOS · DEMO OPERATIONS</p>
         <h1>Appointment scheduling</h1>
-        <p className={styles.subtitle}>Schedule, search, reschedule and manage your visits using the interactive appointment calendar.</p>
+        <p className={styles.subtitle}>Schedule and reschedule using the interactive calendar and suggested slots. Active visits require at least 30 minutes between start times.</p>
         {enabled ? <AppointmentManager/> : (
           <div className={styles.disabled}>
             <h2>Staff authentication is not enabled</h2>

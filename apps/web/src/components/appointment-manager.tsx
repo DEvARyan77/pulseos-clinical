@@ -4,6 +4,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 type PatientOption = { id: string; fullName: string };
 import styles from "./appointment-manager.module.css";
 import AppointmentCalendar from "./appointment-calendar";
+import AppointmentSlotPicker from "./appointment-slot-picker";
 
 type VisitType = "FOLLOW_UP" | "ANNUAL_EXAM" | "CONSULTATION";
 type Appointment = {
@@ -87,6 +88,10 @@ export default function AppointmentManager() {
     if(time.getTime()===new Date(item.scheduledAt).getTime()){
       setError("Choose a different appointment time.");return;
     }
+    const slotBusy=items.some(visit=>visit.id!==item.id&&
+      ["SCHEDULED","CHECKED_IN","IN_CARE"].includes(visit.status)&&
+      Math.abs(new Date(visit.scheduledAt).getTime()-time.getTime())<30*60*1000);
+    if(slotBusy){setError("This time overlaps another active appointment. Choose an available slot.");return;}
     setSaving(true);
     try{
       const response=await fetch(`/api/demo-appointments/${encodeURIComponent(item.id)}/reschedule`,{
@@ -104,21 +109,19 @@ export default function AppointmentManager() {
 
   function pickBookingDate(day:string){
     const now=new Date();
-    const today=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),
+    const localDay=[now.getFullYear(),String(now.getMonth()+1).padStart(2,"0"),
       String(now.getDate()).padStart(2,"0")].join("-");
-    const existing=iframeHour(datetime);
-    // For today's date, choose the next full hour to avoid suggesting a past time.
-    const candidate=day===today?new Date(now.getTime()+3600000):new Date(day+"T10:00:00");
-    if(day===today)candidate.setMinutes(0,0,0);
-    const proposed=day===today?
-      String(candidate.getHours()).padStart(2,"0")+":00":
-      existing;
-    setDatetime(day+"T"+proposed);
+    if(day===localDay){
+      // Choosing today late at night must roll into tomorrow rather than suggest a past time.
+      const next=new Date(now.getTime()+60*60*1000);
+      next.setMinutes(0,0,0);
+      setDatetime(localInput(next.toISOString()));
+    }else{
+      const time=/^([01]\\d|2[0-3]):[0-5]\\d$/.test(datetime.split("T")[1]??"")?
+        datetime.split("T")[1]:"10:00";
+      setDatetime(day+"T"+time);
+    }
     document.getElementById("booking-time")?.focus();
-  }
-  function iframeHour(value:string){
-    const time=value.split("T")[1];
-    return time&&/^([01]\d|2[0-3]):[0-5]\d$/.test(time)?time:"10:00";
   }
 
   async function schedule(event: FormEvent<HTMLFormElement>) {
@@ -134,6 +137,9 @@ export default function AppointmentManager() {
       setError("Choose a future date and time");
       return;
     }
+    const slotBusy=items.some(item=>["SCHEDULED","CHECKED_IN","IN_CARE"].includes(item.status)&&
+      Math.abs(new Date(item.scheduledAt).getTime()-date.getTime())<30*60*1000);
+    if(slotBusy){setError("This clinician has a booking within 30 minutes. Select an available slot.");return;}
     setSaving(true);
     try {
       const response = await fetch("/api/demo-appointments", {
@@ -146,7 +152,7 @@ export default function AppointmentManager() {
         throw new Error("error" in result ? result.error : "Could not create appointment");
       }
       setDatetime("");
-      setSuccess("Appointment saved. The clinician and QR email will be sent when a test email address is allowlisted and the mail provider and public URL are configured.");
+      setSuccess("Appointment saved without a scheduling conflict. A QR email is attempted if the test address is allowlisted and mail is configured.");
       await reload();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not create appointment");
@@ -203,6 +209,7 @@ export default function AppointmentManager() {
           <label htmlFor="booking-time">Date and time</label>
           <input id="booking-time" type="datetime-local" value={datetime}
             onChange={event => setDatetime(event.target.value)} required />
+          <AppointmentSlotPicker value={datetime} onSelect={setDatetime} visits={items}/>
           <button type="submit" disabled={saving || patients.length===0}>{saving ? "Saving…" : "Schedule appointment"}</button>
         </form>
         {error && <p className={styles.error} role="alert">{error}</p>}
@@ -258,6 +265,8 @@ export default function AppointmentManager() {
                   <input id={`move-${item.id}`} type="datetime-local" required value={newDatetime}
                     onChange={event=>setNewDatetime(event.target.value)}/>
                 </label>
+                <AppointmentSlotPicker value={newDatetime} onSelect={setNewDatetime}
+                  visits={items} excludeId={item.id}/>
                 <button type="submit" disabled={saving}>{saving?"Saving…":"Confirm new time"}</button>
                 <button type="button" disabled={saving} onClick={()=>setRescheduleId(null)}>Cancel changes</button>
                 <p>Only scheduled future visits can be moved. QR email delivery requires an allowlisted test address.</p>
