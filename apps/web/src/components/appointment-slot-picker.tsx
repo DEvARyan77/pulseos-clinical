@@ -15,11 +15,11 @@ const pad=(value:number)=>String(value).padStart(2,"0");
 
 /** Suggestions are local-time conveniences; the server enforces the booking rule. */
 export default function AppointmentSlotPicker({value,onSelect,visits,excludeId}:Props){
+  // Hooks must run before any conditional rendering path.
+  const [now]=useState(()=>Date.now());
   const day=value.slice(0,10);
   const selectedDay=/^\d{4}-\d{2}-\d{2}$/.test(day)?day:"";
   if(!selectedDay)return <p className={styles.hint}>Choose a date to see available time slots.</p>;
-  // Capture current time once at mount; avoid reading an impure clock in render.
-  const [now]=useState(()=>Date.now());
   const slots=Array.from({length:18},(_,index)=>{
     const hour=9+Math.floor(index/2),minute=index%2?30:0;
     const label=`${pad(hour)}:${pad(minute)}`;
