@@ -33,6 +33,8 @@ public class DemoAppointment {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt = Instant.now();
 
+    @Version @Column(nullable = false) private long version;
+
     protected DemoAppointment() {}
 
     DemoAppointment(String createdBy, String patientId, Instant scheduledAt, VisitType visitType) {
@@ -49,7 +51,13 @@ public class DemoAppointment {
     public VisitType getVisitType() { return visitType; }
     public Status getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
+    public long getVersion() { return version; }
 
+    public void reschedule(Instant newTime) {
+        if(status!=Status.SCHEDULED)throw new IllegalStateException("Only scheduled visits can be rescheduled");
+        if(newTime==null||!newTime.isAfter(Instant.now()))throw new IllegalArgumentException("Select a future appointment time");
+        scheduledAt=newTime;
+    }
     public void cancel() { if(status!=Status.SCHEDULED&&status!=Status.CHECKED_IN)throw new IllegalStateException("Cannot cancel an active visit");status = Status.CANCELLED; }
     public void checkIn(){if(status!=Status.SCHEDULED)throw new IllegalStateException("Visit already checked in");status=Status.CHECKED_IN;}
     public void advance(){if(status==Status.CHECKED_IN)status=Status.IN_CARE;else if(status==Status.IN_CARE)status=Status.COMPLETED;else throw new IllegalStateException("Visit cannot advance");}

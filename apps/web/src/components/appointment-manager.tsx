@@ -28,6 +28,10 @@ export default function AppointmentManager() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<"ALL" | Appointment["status"]>("ALL");
+  const [rescheduleId, setRescheduleId] = useState<string|null>(null);
+  const [newDatetime, setNewDatetime] = useState("");
 
   const reload = useCallback(() => {
     return Promise.all([
@@ -55,6 +59,47 @@ export default function AppointmentManager() {
   useEffect(() => { void reload(); }, [reload]);
 
   const total = useMemo(() => items.filter(item => item.status !== "CANCELLED" && item.status !== "COMPLETED").length, [items]);
+
+  const shown=useMemo(()=>items.filter(item=>{
+    if(filter!=="ALL"&&item.status!==filter)return false;
+    const patient=patients.find(p=>p.id===item.patientId);
+    return [patient?.fullName??"",item.patientId,visitNames[item.visitType],item.status]
+      .join(" ").toLowerCase().includes(query.trim().toLowerCase());
+  }),[items,patients,filter,query]);
+
+  function localInput(iso:string){
+    const d=new Date(iso), pad=(value:number)=>String(value).padStart(2,"0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+  function startReschedule(item:Appointment){
+    setRescheduleId(item.id);setNewDatetime(localInput(item.scheduledAt));setError("");setSuccess("");
+  }
+  async function reschedule(event:FormEvent<HTMLFormElement>,item:Appointment){
+    event.preventDefault();setError("");setSuccess("");
+    const time=new Date(newDatetime);
+    if(!newDatetime||!Number.isFinite(time.getTime())||time.getTime()<=Date.now()){
+      setError("Select a future appointment date and time.");return;
+    }
+    if(time.getTime()>Date.now()+365*86400000){
+      setError("Choose a date within the next year.");return;
+    }
+    if(time.getTime()===new Date(item.scheduledAt).getTime()){
+      setError("Choose a different appointment time.");return;
+    }
+    setSaving(true);
+    try{
+      const response=await fetch(`/api/demo-appointments/${encodeURIComponent(item.id)}/reschedule`,{
+        method:"PATCH",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({scheduledAt:time.toISOString()})
+      });
+      const result=await response.json() as {error?:string};
+      if(!response.ok)throw new Error(result.error??"Could not reschedule appointment");
+      setRescheduleId(null);setNewDatetime("");
+      setSuccess("Appointment rescheduled. The patient portal shows the new time; a refreshed QR email is attempted for approved demo mailboxes.");
+      await reload();
+    }catch(cause){setError(cause instanceof Error?cause.message:"Could not reschedule appointment");}
+    finally{setSaving(false);}
+  }
 
   async function schedule(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -145,9 +190,28 @@ export default function AppointmentManager() {
       </section>
       <section className={styles.listCard}>
         <div className={styles.listHead}><div><h2>Appointments</h2><p>{total} upcoming scheduled visit(s)</p></div><button type="button" onClick={()=>{setLoading(true);void reload();}} disabled={loading}>Refresh</button></div>
+        <div className={styles.filters}>
+          <label htmlFor="appointment-search">Search
+            <input id="appointment-search" type="search" value={query} onChange={event=>setQuery(event.target.value)}
+              placeholder="Patient name, ID or visit type"/>
+          </label>
+          <label htmlFor="appointment-filter">Status
+            <select id="appointment-filter" value={filter}
+              onChange={event=>setFilter(event.target.value as typeof filter)}>
+              <option value="ALL">All statuses</option>
+              <option value="SCHEDULED">Scheduled</option>
+              <option value="CHECKED_IN">Checked in</option>
+              <option value="IN_CARE">In care</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </label>
+        </div>
+        {!loading&&items.length>0&&<p className={styles.filterCount}>{shown.length} of {items.length} appointments shown</p>}
         {loading ? <p className={styles.empty}>Loading appointments…</p> : items.length === 0 ?
           <p className={styles.empty}>No appointments yet. Schedule a fictional patient to see a saved visit here.</p> :
-          <ul className={styles.list}>{items.map(item => {
+          shown.length===0 ? <p className={styles.empty}>No appointments match these filters.</p> :
+          <ul className={styles.list}>{shown.map(item => {
             const patient = patients.find(entry => entry.id === item.patientId);
             return <li key={item.id}>
               <div>
@@ -155,8 +219,22 @@ export default function AppointmentManager() {
                 <p>{visitNames[item.visitType]} · {new Date(item.scheduledAt).toLocaleString()}</p>
                 <span className={item.status === "CANCELLED" ? styles.cancelled : styles.active}>{item.status.replaceAll("_"," ")}</span>
               </div>
-              {(item.status === "CHECKED_IN" || item.status === "IN_CARE") && <button type="button" disabled={saving} onClick={()=>void advance(item.id)}>Advance stage</button>}
-              {item.status === "SCHEDULED" && <button type="button" disabled={saving} onClick={()=>void cancel(item.id)}>Cancel</button>}
+              <div className={styles.actions}>
+                {(item.status === "CHECKED_IN" || item.status === "IN_CARE") && <button type="button" disabled={saving} onClick={()=>void advance(item.id)}>Advance stage</button>}
+                {item.status === "SCHEDULED" && <>
+                  <button type="button" disabled={saving} onClick={()=>startReschedule(item)}>Reschedule</button>
+                  <button type="button" disabled={saving} onClick={()=>void cancel(item.id)}>Cancel</button>
+                </>}
+              </div>
+              {rescheduleId===item.id&&<form className={styles.rescheduleForm} onSubmit={event=>void reschedule(event,item)}>
+                <label htmlFor={`move-${item.id}`}>New date and time
+                  <input id={`move-${item.id}`} type="datetime-local" required value={newDatetime}
+                    onChange={event=>setNewDatetime(event.target.value)}/>
+                </label>
+                <button type="submit" disabled={saving}>{saving?"Saving…":"Confirm new time"}</button>
+                <button type="button" disabled={saving} onClick={()=>setRescheduleId(null)}>Cancel changes</button>
+                <p>Only scheduled future visits can be moved. QR email delivery requires an allowlisted test address.</p>
+              </form>}
             </li>;
           })}</ul>}
       </section>

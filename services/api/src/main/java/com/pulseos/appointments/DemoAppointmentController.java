@@ -39,6 +39,7 @@ public class DemoAppointmentController {
   }
   public record CreateAppointmentRequest(@NotBlank String patientId,
      @NotNull @Future Instant scheduledAt,@NotNull DemoAppointment.VisitType visitType){}
+  public record RescheduleAppointmentRequest(@NotNull @Future Instant scheduledAt){}
   public record AppointmentResponse(UUID id,String patientId,Instant scheduledAt,
      DemoAppointment.VisitType visitType,DemoAppointment.Status status){
     static AppointmentResponse from(DemoAppointment row){
@@ -67,6 +68,29 @@ public class DemoAppointmentController {
       jwt.getSubject(),request.patientId(),request.scheduledAt(),request.visitType()));
     if(recipient!=null&&notices!=null)notices.sendAppointment(row,recipient);
     return ResponseEntity.status(HttpStatus.CREATED).header("Cache-Control","no-store").body(AppointmentResponse.from(row));
+  }
+  /** Only the owning clinician can move a scheduled visit. */
+  @PatchMapping("/{id}/reschedule")
+  @Transactional
+  public ResponseEntity<?> reschedule(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID id,
+      @Valid @RequestBody RescheduleAppointmentRequest request){
+    DemoAppointment row=appointments.findByIdAndCreatedBy(id,jwt.getSubject())
+      .orElseThrow(()->new org.springframework.web.server.ResponseStatusException(HttpStatus.NOT_FOUND,"Appointment not found"));
+    if(row.getStatus()!=DemoAppointment.Status.SCHEDULED)
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error","Only scheduled visits can be rescheduled"));
+    if(request.scheduledAt().isAfter(Instant.now().plus(365,ChronoUnit.DAYS)))
+      return ResponseEntity.badRequest().body(Map.of("error","Date must be within the next year"));
+    if(row.getScheduledAt().equals(request.scheduledAt()))
+      return ResponseEntity.badRequest().body(Map.of("error","Select a different appointment time"));
+    row.reschedule(request.scheduledAt());
+    appointments.saveAndFlush(row);
+    // Refresh the appointment QR email only for an approved fictional test address.
+    if(notices!=null){
+      try{patients.findByIdAndOwner(UUID.fromString(row.getPatientId()),jwt.getSubject())
+        .ifPresent(patient->notices.sendAppointment(row,patient));}
+      catch(IllegalArgumentException ignored){}
+    }
+    return ResponseEntity.ok().header("Cache-Control","no-store").body(AppointmentResponse.from(row));
   }
   @PatchMapping("/{id}/advance")
   @Transactional
