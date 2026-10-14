@@ -269,7 +269,7 @@ export default function RegistryWorkspace({apiStatus}:{apiStatus:"connected"|"of
        </section>}
        {tab==="Notifications"&&<section className={styles.panel}>
          <h2><Bell size={18}/> Patient notifications</h2>
-         <p className={styles.helper}>In-app notifications are recorded within the staff demo. Email sends a fixed, non-clinical message only to an approved demo address.</p>
+         <p className={styles.helper}>In-app notifications are recorded within the staff demo. Email sends a fixed, non-clinical message only to an approved demo address. The test address must be in PULSEOS_DEMO_EMAIL_ALLOWLIST, and the latest Google Apps Script relay must be deployed. If an email times out, check notification history before retrying.</p>
          <div className={styles.notificationActions}>
            <button type="button" disabled={busy} onClick={()=>void sendNotification("IN_APP")}>Create in-app notification</button>
            <button type="button" disabled={busy||!active.contactEmail} onClick={()=>void sendNotification("EMAIL")}>Send demo email</button>

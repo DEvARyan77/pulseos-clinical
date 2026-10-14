@@ -27,7 +27,10 @@ export async function clinicalProxy(request: NextRequest, path: string, method: 
   }
   // Google Apps Script can take up to 45 seconds for an approved demo email.
   // Keep a longer timeout ONLY for that mail-producing endpoint.
-  const patientEmailRequest=method==="POST"&&/^\/api\/v1\/patients\/[0-9a-fA-F-]{36}\/notifications$/.test(path);
+  const patientNotificationRequest=method==="POST"&&/^\/api\/v1\/patients\/[0-9a-fA-F-]{36}\/notifications$/.test(path);
+  // Ordinary in-app notifications do not need the longer mail timeout.
+  const patientEmailRequest=patientNotificationRequest&&body!==undefined&&
+    (JSON.parse(body) as {channel?: unknown}).channel==="EMAIL";
   try {
     const response=await fetch(`${process.env.API_INTERNAL_URL ?? "http://localhost:8080"}${path}`,{
       method,
@@ -39,6 +42,20 @@ export async function clinicalProxy(request: NextRequest, path: string, method: 
     const raw=await response.text();
     let content:unknown={};
     try {content=raw?JSON.parse(raw):{};}catch{content={error:"Invalid backend response"};}
+    // Spring can return problem details without an "error" field.
+    // Show only safe, actionable messages for this test-only email operation.
+    if(patientEmailRequest&&!response.ok){
+      let message: string|undefined;
+      if(response.status===403){
+        message="Demo email blocked. Verify that this fictional patient's contact email appears in PULSEOS_DEMO_EMAIL_ALLOWLIST on pulseos-api.";
+      }else if(response.status===503){
+        message="Demo email could not be sent. Check the backend email provider settings and publish the latest Google Apps Script relay version under Manage deployments. Review Apps Script Executions.";
+      }else if(response.status===504){
+        message="Email delivery timed out. Check notification history before retrying to avoid duplicate messages.";
+      }
+      if(message)return NextResponse.json({error:message},{status:response.status,
+        headers:{"Cache-Control":"no-store"}});
+    }
     return NextResponse.json(content,{status:response.status,headers:{"Cache-Control":"no-store"}});
   }catch(error){
     const timedOut=error instanceof Error && (error.name==="TimeoutError" || error.name==="AbortError");
