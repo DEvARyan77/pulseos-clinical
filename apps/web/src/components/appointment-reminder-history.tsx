@@ -1,6 +1,6 @@
 "use client";
 
-import {useCallback,useEffect,useState} from "react";
+import {useEffect,useState} from "react";
 import styles from "./appointment-reminder-history.module.css";
 
 type Attempt={
@@ -18,22 +18,32 @@ const labels:Record<Attempt["status"],string>={
   SKIPPED:"Not eligible"
 };
 
+async function fetchReminderHistory():Promise<History>{
+  const response=await fetch("/api/demo-appointments/reminders",{cache:"no-store"});
+  const data=await response.json() as History&{error?:string};
+  if(!response.ok||!Array.isArray(data.attempts))
+    throw new Error(data.error??"Unable to load reminder history");
+  return data;
+}
 export default function AppointmentReminderHistory(){
   const [history,setHistory]=useState<History|null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
-  const reload=useCallback(async()=>{
-    try{
-      const response=await fetch("/api/demo-appointments/reminders",{cache:"no-store"});
-      const data=await response.json() as History&{error?:string};
-      if(!response.ok||!Array.isArray(data.attempts))
-        throw new Error(data.error??"Unable to load reminder history");
-      setHistory(data);setError("");
-    }catch(cause){
-      setError(cause instanceof Error?cause.message:"Unable to load reminders");
-    }finally{setLoading(false);}
+  useEffect(()=>{
+    let active=true;
+    void fetchReminderHistory().then(data=>{
+      if(active){setHistory(data);setError("");}
+    }).catch(cause=>{
+      if(active)setError(cause instanceof Error?cause.message:"Unable to load reminders");
+    }).finally(()=>{if(active)setLoading(false);});
+    return ()=>{active=false;};
   },[]);
-  useEffect(()=>{void reload();},[reload]);
+  async function reload(){
+    setLoading(true);
+    try{setHistory(await fetchReminderHistory());setError("");}
+    catch(cause){setError(cause instanceof Error?cause.message:"Unable to load reminders");}
+    finally{setLoading(false);}
+  }
   return <section className={styles.panel} aria-label="Appointment reminder history">
     <div className={styles.heading}>
       <div><h2>Automatic appointment reminders</h2>
