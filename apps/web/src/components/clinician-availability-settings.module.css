@@ -13,3 +13,5 @@
 .footer button:disabled{opacity:.5;cursor:wait}
 .error,.success{font-size:12px;line-height:1.5}.error{color:#d06870}.success{color:var(--accent-text)}
 @media(max-width:550px){.panel{padding:18px}.form{grid-template-columns:1fr}}
+
+.detectZone{justify-self:start;border:1px solid var(--line);background:var(--soft);color:var(--text);border-radius:7px;padding:7px 10px;cursor:pointer;font-size:11px}

@@ -1,30 +1,31 @@
 "use client";
 
-import {FormEvent,useEffect,useState} from "react";
+import {FormEvent,useState} from "react";
 import {ClinicianAvailability,localTimeZone,WEEKDAYS,Weekday} from "@/lib/clinician-availability";
 import styles from "./clinician-availability-settings.module.css";
 
 type Props={availability:ClinicianAvailability|null;onSaved:(settings:ClinicianAvailability)=>void};
 type Draft={zoneId:string;workDays:Weekday[];startTime:string;endTime:string;
   breakStartTime:string;breakEndTime:string;blockedDates:string};
-const defaults=():Draft=>({zoneId:"Etc/UTC",workDays:[...WEEKDAYS.slice(0,5)],
+const defaults=():Draft=>({zoneId:localTimeZone(),workDays:[...WEEKDAYS.slice(0,5)],
   startTime:"09:00",endTime:"18:00",breakStartTime:"13:00",breakEndTime:"14:00",
   blockedDates:""});
 
 export default function ClinicianAvailabilitySettings({availability,onSaved}:Props){
-  const [draft,setDraft]=useState<Draft>(defaults);
-  const [saving,setSaving]=useState(false);
-  const [error,setError]=useState("");
-  const [message,setMessage]=useState("");
-  useEffect(()=>{
-    setDraft(availability?.configured?{
+  if(!availability)return <section className={styles.panel}><p>Loading availability settings…</p></section>;
+  return <AvailabilityForm availability={availability} onSaved={onSaved}/>;
+}
+function AvailabilityForm({availability,onSaved}:{availability:ClinicianAvailability;onSaved:Props["onSaved"]}){
+  const [draft,setDraft]=useState<Draft>(()=>availability.configured?{
       zoneId:availability.zoneId,workDays:availability.workDays,
       startTime:availability.startTime.slice(0,5),endTime:availability.endTime.slice(0,5),
       breakStartTime:availability.breakStartTime?.slice(0,5)??"",
       breakEndTime:availability.breakEndTime?.slice(0,5)??"",
       blockedDates:availability.blockedDates.join("\n")
-    }:{...defaults(),zoneId:localTimeZone()});
-  },[availability]);
+    }:defaults());
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState("");
+  const [message,setMessage]=useState("");
   function toggle(day:Weekday,checked:boolean){
     setDraft(current=>({...current,workDays:checked?
       [...new Set([...current.workDays,day])].sort((a,b)=>WEEKDAYS.indexOf(a)-WEEKDAYS.indexOf(b)):
@@ -71,6 +72,8 @@ export default function ClinicianAvailabilitySettings({availability,onSaved}:Pro
         <input required maxLength={80} value={draft.zoneId}
           onChange={event=>setDraft(d=>({...d,zoneId:event.target.value}))}/>
         <small>Rules use this zone. The appointment pickers above use your device time zone.</small>
+        <button type="button" className={styles.detectZone}
+          onClick={()=>setDraft(d=>({...d,zoneId:localTimeZone()}))}>Use my device time zone</button>
       </label>
       <fieldset className={styles.full}>
         <legend>Working days</legend>
