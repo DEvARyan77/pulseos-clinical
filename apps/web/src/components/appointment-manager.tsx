@@ -6,6 +6,8 @@ import styles from "./appointment-manager.module.css";
 import AppointmentCalendar from "./appointment-calendar";
 import AppointmentSlotPicker from "./appointment-slot-picker";
 import {downloadCalendarIcs} from "@/lib/calendar-export";
+import ClinicianAvailabilitySettings from "./clinician-availability-settings";
+import {ClinicianAvailability,isSlotAllowed} from "@/lib/clinician-availability";
 
 type VisitType = "FOLLOW_UP" | "ANNUAL_EXAM" | "CONSULTATION";
 type Appointment = {
@@ -24,6 +26,7 @@ const visitNames: Record<VisitType,string> = {
 export default function AppointmentManager() {
   const [items, setItems] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<PatientOption[]>([]);
+  const [availability, setAvailability] = useState<ClinicianAvailability|null>(null);
   const [patientId, setPatientId] = useState("");
   const [datetime, setDatetime] = useState("");
   const [visitType, setVisitType] = useState<VisitType>("FOLLOW_UP");
@@ -40,17 +43,22 @@ export default function AppointmentManager() {
     return Promise.all([
       fetch("/api/demo-appointments", { cache: "no-store" }),
       fetch("/api/patients", { cache: "no-store" }),
-    ]).then(async ([response, patientResponse]) => {
+      fetch("/api/demo-appointments/availability", { cache: "no-store" }),
+    ]).then(async ([response, patientResponse, availabilityResponse]) => {
       const result = await response.json() as Appointment[] | { error: string };
       const patientResult = await patientResponse.json() as PatientOption[] | { error: string };
+      const availabilityResult = await availabilityResponse.json() as ClinicianAvailability & {error?:string};
       if (!response.ok || !Array.isArray(result)) {
         throw new Error(Array.isArray(result) ? "Failed to load appointments" : result.error);
       }
       if (!patientResponse.ok || !Array.isArray(patientResult)) {
         throw new Error(Array.isArray(patientResult) ? "Failed to load patients" : patientResult.error);
       }
-      return { result, patientResult };
-    }).then(({ result, patientResult }) => {
+      if(!availabilityResponse.ok || typeof availabilityResult.configured!=="boolean")
+        throw new Error(availabilityResult.error??"Failed to load availability");
+      return { result, patientResult, availabilityResult };
+    }).then(({ result, patientResult, availabilityResult }) => {
+      setAvailability(availabilityResult);
       setItems(result);
       setPatients(patientResult);
       setPatientId(current => patientResult.some(p => p.id === current) ? current : patientResult[0]?.id ?? "");
@@ -93,6 +101,7 @@ export default function AppointmentManager() {
       ["SCHEDULED","CHECKED_IN","IN_CARE"].includes(visit.status)&&
       Math.abs(new Date(visit.scheduledAt).getTime()-time.getTime())<30*60*1000);
     if(slotBusy){setError("This time overlaps another active appointment. Choose an available slot.");return;}
+    if(!isSlotAllowed(time,availability)){setError("Outside working hours, break, or blocked dates.");return;}
     setSaving(true);
     try{
       const response=await fetch(`/api/demo-appointments/${encodeURIComponent(item.id)}/reschedule`,{
@@ -141,6 +150,7 @@ export default function AppointmentManager() {
     const slotBusy=items.some(item=>["SCHEDULED","CHECKED_IN","IN_CARE"].includes(item.status)&&
       Math.abs(new Date(item.scheduledAt).getTime()-date.getTime())<30*60*1000);
     if(slotBusy){setError("This clinician has a booking within 30 minutes. Select an available slot.");return;}
+    if(!isSlotAllowed(date,availability)){setError("Outside working hours, break, or blocked dates.");return;}
     setSaving(true);
     try {
       const response = await fetch("/api/demo-appointments", {
@@ -210,7 +220,7 @@ export default function AppointmentManager() {
           <label htmlFor="booking-time">Date and time</label>
           <input id="booking-time" type="datetime-local" value={datetime}
             onChange={event => setDatetime(event.target.value)} required />
-          <AppointmentSlotPicker value={datetime} onSelect={setDatetime} visits={items}/>
+          <AppointmentSlotPicker value={datetime} onSelect={setDatetime} visits={items} availability={availability}/>
           <button type="submit" disabled={saving || patients.length===0}>{saving ? "Saving…" : "Schedule appointment"}</button>
         </form>
         {error && <p className={styles.error} role="alert">{error}</p>}
@@ -271,7 +281,7 @@ export default function AppointmentManager() {
                     onChange={event=>setNewDatetime(event.target.value)}/>
                 </label>
                 <AppointmentSlotPicker value={newDatetime} onSelect={setNewDatetime}
-                  visits={items} excludeId={item.id}/>
+                  visits={items} excludeId={item.id} availability={availability}/>
                 <button type="submit" disabled={saving}>{saving?"Saving…":"Confirm new time"}</button>
                 <button type="button" disabled={saving} onClick={()=>setRescheduleId(null)}>Cancel changes</button>
                 <p>Only scheduled future visits can be moved. QR email delivery requires an allowlisted test address.</p>
@@ -279,6 +289,7 @@ export default function AppointmentManager() {
             </li>;
           })}</ul>}
       </section>
+      <ClinicianAvailabilitySettings availability={availability} onSaved={setAvailability}/>
     </div>
   );
 }

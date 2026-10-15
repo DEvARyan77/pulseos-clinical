@@ -15,6 +15,7 @@ Next.js 16, Spring Boot 4.1, PostgreSQL, JWT authentication, patient records, ap
 - User-scoped patient records, editing, visit notes, timestamps and change history
 - Authenticated PostgreSQL appointment scheduling for patients in the user's test registry
 - Clinician and verified patient appointment calendars with private `.ics` downloads (whole displayed schedule, selected day, or one visit). Imports are manual snapshots, not automatic Google/Outlook sync; export again after a change.
+- Per-clinician PostgreSQL availability with selected IANA time zone, working days, opening hours, optional daily break and up to 90 blocked dates. Once configured, the API rejects new and rescheduled visits outside these windows. Existing bookings remain unchanged; until configured, legacy unrestricted scheduling remains available.
 - Logout and HttpOnly, short-lived JWT session cookie
 
 ## Email delivery configuration

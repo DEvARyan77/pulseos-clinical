@@ -91,9 +91,16 @@ public class ClinicianAvailabilityController {
 
             // Share the same per-clinician transaction lock used by booking/rescheduling.
             appointments.lockSchedule(jwt.getSubject());
-            ClinicianAvailability row=new ClinicianAvailability(jwt.getSubject(),
-                request.zoneId(),request.workDays(),request.startTime(),request.endTime(),
-                request.breakStartTime(),request.breakEndTime(),request.blockedDates());
+            ClinicianAvailability row=schedules.findById(jwt.getSubject()).orElse(null);
+            if(row==null){
+                row=new ClinicianAvailability(jwt.getSubject(),request.zoneId(),
+                    request.workDays(),request.startTime(),request.endTime(),
+                    request.breakStartTime(),request.breakEndTime(),request.blockedDates());
+            }else{
+                row.update(request.zoneId(),request.workDays(),request.startTime(),
+                    request.endTime(),request.breakStartTime(),request.breakEndTime(),
+                    request.blockedDates());
+            }
             schedules.saveAndFlush(row);
             return ResponseEntity.ok().cacheControl(CacheControl.noStore())
                 .body(AvailabilityResponse.from(row));

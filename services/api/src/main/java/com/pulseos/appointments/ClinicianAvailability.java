@@ -36,7 +36,7 @@ public class ClinicianAvailability {
 
     @Version
     @Column(nullable = false)
-    private long version;
+    private Long version;
 
     protected ClinicianAvailability() {}
 
@@ -44,6 +44,13 @@ public class ClinicianAvailability {
         Collection<DayOfWeek> days, LocalTime opensAt, LocalTime closesAt,
         LocalTime breakStartAt, LocalTime breakEndAt, Collection<LocalDate> blockedDates) {
         this.clinicianUsername = Objects.requireNonNull(clinicianUsername);
+        update(zoneId,days,opensAt,closesAt,breakStartAt,breakEndAt,blockedDates);
+    }
+
+    /** Retain the existing entity version on repeated updates. */
+    public void update(String zoneId,Collection<DayOfWeek> days,LocalTime opensAt,
+        LocalTime closesAt,LocalTime breakStartAt,LocalTime breakEndAt,
+        Collection<LocalDate> blockedDates){
         this.zoneId = Objects.requireNonNull(zoneId);
         this.workingDays = days.stream().sorted().map(DayOfWeek::name)
             .collect(Collectors.joining(","));
