@@ -46,6 +46,10 @@ public class AppointmentNoticeService {
     return patient!=null && patient.getContactEmail()!=null &&
       allowed.contains(patient.getContactEmail().strip().toLowerCase(Locale.ROOT));
   }
+  /** Reminders obey the existing demo-only recipient allowlist. */
+  public boolean isReminderRecipientAllowed(PatientRecord patient){
+    return allowed(patient);
+  }
   public boolean sendCreated(PatientRecord patient){
     if(!allowed(patient)||!genericMailer.isConfigured())return false;
     try{genericMailer.sendPatientNotice(patient.getContactEmail());return true;}
