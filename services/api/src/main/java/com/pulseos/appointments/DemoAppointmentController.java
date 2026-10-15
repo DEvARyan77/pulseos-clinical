@@ -35,13 +35,26 @@ public class DemoAppointmentController {
   private final DemoAppointmentRepository appointments;
   private final PatientRepository patients;
   private final AppointmentNoticeService notices;
+  private final ClinicianAvailabilityRepository availability;
   @Autowired
-  public DemoAppointmentController(DemoAppointmentRepository appointments,PatientRepository patients,AppointmentNoticeService notices){
+  public DemoAppointmentController(DemoAppointmentRepository appointments,PatientRepository patients,
+      AppointmentNoticeService notices,ClinicianAvailabilityRepository availability){
     this.appointments=appointments;this.patients=patients;this.notices=notices;
+    this.availability=availability;
+  }
+  DemoAppointmentController(DemoAppointmentRepository appointments,PatientRepository patients,
+      AppointmentNoticeService notices) {
+    this(appointments,patients,notices,null);
   }
   DemoAppointmentController(DemoAppointmentRepository appointments,PatientRepository patients){
-    this(appointments,patients,null);
+    this(appointments,patients,null,null);
   }
+  private boolean allowedByAvailability(String owner,Instant when) {
+    return availability == null ||
+      availability.findById(owner).map(row->row.allows(when)).orElse(true);
+  }
+  private static final String UNAVAILABLE_SLOT =
+    "Outside your working hours, break, or a blocked date. Update availability or select another slot.";
   public record CreateAppointmentRequest(@NotBlank String patientId,
      @NotNull @Future Instant scheduledAt,@NotNull DemoAppointment.VisitType visitType){}
   public record RescheduleAppointmentRequest(@NotNull @Future Instant scheduledAt){}
@@ -78,6 +91,8 @@ public class DemoAppointmentController {
     if(request.scheduledAt().isAfter(Instant.now().plus(365,ChronoUnit.DAYS)))
       return ResponseEntity.badRequest().body(Map.of("error","Date must be within the next year"));
     appointments.lockSchedule(jwt.getSubject());
+    if(!allowedByAvailability(jwt.getSubject(),request.scheduledAt()))
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error",UNAVAILABLE_SLOT));
     if(conflicts(jwt.getSubject(),request.scheduledAt(),null))
       return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error",BOOKING_CONFLICT));
     var row=appointments.saveAndFlush(new DemoAppointment(
@@ -99,6 +114,8 @@ public class DemoAppointmentController {
       return ResponseEntity.badRequest().body(Map.of("error","Date must be within the next year"));
     if(row.getScheduledAt().equals(request.scheduledAt()))
       return ResponseEntity.badRequest().body(Map.of("error","Select a different appointment time"));
+    if(!allowedByAvailability(jwt.getSubject(),request.scheduledAt()))
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error",UNAVAILABLE_SLOT));
     if(conflicts(jwt.getSubject(),request.scheduledAt(),id))
       return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error",BOOKING_CONFLICT));
     row.reschedule(request.scheduledAt());

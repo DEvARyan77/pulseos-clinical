@@ -152,6 +152,25 @@ class DemoAppointmentControllerTest {
         verify(repository).saveAndFlush(row);
     }
     @Test
+    void configuredHoursAlsoPreventDirectApiBookings() {
+        var repository=mock(DemoAppointmentRepository.class);
+        var availability=mock(ClinicianAvailabilityRepository.class);
+        var controller=new DemoAppointmentController(repository,mock(PatientRepository.class),null,availability);
+        var jwt=mock(Jwt.class);
+        when(jwt.getSubject()).thenReturn("clinician");
+        var closedTime=java.time.ZonedDateTime.of(2026,11,15,10,0,0,0,
+            java.time.ZoneId.of("Asia/Kolkata")).toInstant();
+        var rules=new ClinicianAvailability("clinician","Asia/Kolkata",
+            List.of(java.time.DayOfWeek.MONDAY),java.time.LocalTime.of(9,0),
+            java.time.LocalTime.of(17,0),null,null,List.of());
+        when(availability.findById("clinician")).thenReturn(Optional.of(rules));
+        var response=controller.create(jwt,new DemoAppointmentController.CreateAppointmentRequest(
+            "DEMO-1001",closedTime,DemoAppointment.VisitType.CONSULTATION));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+        verify(repository,never()).saveAndFlush(any());
+    }
+
+    @Test
     void appointmentsAreQueriedPerSignedInStaffAccount() {
         var repository = mock(DemoAppointmentRepository.class);
         var controller = new DemoAppointmentController(repository, mock(PatientRepository.class));
