@@ -7,6 +7,7 @@ import AppointmentCalendar from "./appointment-calendar";
 import AppointmentSlotPicker from "./appointment-slot-picker";
 import {downloadCalendarIcs} from "@/lib/calendar-export";
 import ClinicianAvailabilitySettings from "./clinician-availability-settings";
+import AppointmentReminderHistory from "./appointment-reminder-history";
 import {ClinicianAvailability,isSlotAllowed} from "@/lib/clinician-availability";
 
 type VisitType = "FOLLOW_UP" | "ANNUAL_EXAM" | "CONSULTATION";
@@ -290,6 +291,7 @@ export default function AppointmentManager() {
           })}</ul>}
       </section>
       <ClinicianAvailabilitySettings availability={availability} onSaved={setAvailability}/>
+      <AppointmentReminderHistory/>
     </div>
   );
 }
