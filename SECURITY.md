@@ -10,4 +10,6 @@ PulseOS is not certified for medical use and must not store real patient informa
 - Existing user-scoped patient and appointment APIs remain authorization-protected.
 - **An email-verified account is not automatically an authorized clinician**. This app uses fictional data only.
 
-Missing: robust IP-based signup throttling, MFA, password recovery, signed invitation lifecycle, proven secure email infrastructure, comprehensive audit trails, regulatory safeguards, and penetration testing.
+Password recovery uses one-time email codes. Still missing: robust distributed abuse protection, MFA, signed invitation lifecycle, proven secure email infrastructure, comprehensive audit trails, regulatory safeguards, and independent penetration testing.
+
+Appointment dashboard queries are owner-scoped and no-store. Counts do not expose recipient addresses or mail content. Demo mail uses an explicit test-only recipient allowlist; automatic reminders are off by default. SMTP requires STARTTLS and hostname verification. See [operational limits](docs/operations.md).

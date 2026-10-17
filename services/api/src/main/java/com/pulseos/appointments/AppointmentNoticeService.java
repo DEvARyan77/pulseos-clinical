@@ -24,7 +24,7 @@ public class AppointmentNoticeService {
   private final Set<String> allowed;
   private final ObjectProvider<JavaMailSender> smtp;
   private final VerificationMailSender genericMailer;
-  private final HttpClient client=HttpClient.newHttpClient();
+  private final HttpClient client=HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
   public AppointmentNoticeService(
     @Value("${PULSEOS_PUBLIC_URL:}") String publicUrl,
     @Value("${PULSEOS_EMAIL_PROVIDER:disabled}") String provider,
@@ -39,9 +39,24 @@ public class AppointmentNoticeService {
     this.allowed=new HashSet<>();
     for(String email:allowlist.split(","))if(!email.isBlank())allowed.add(email.strip().toLowerCase(Locale.ROOT));
   }
-  private static String json(String value){
-    return "\"" + value.replace("\\","\\").replace("\"","\"").replace("\n","\\n") + "\"";
-  }
+    static String json(String text) {
+        StringBuilder encoded = new StringBuilder("\"");
+        for (char c : text.toCharArray()) {
+            switch (c) {
+                case '"' -> encoded.append("\\\"");
+                case '\\' -> encoded.append("\\\\");
+                case '\n' -> encoded.append("\\n");
+                case '\r' -> encoded.append("\\r");
+                case '\t' -> encoded.append("\\t");
+                default -> {
+                    if (c < 32) encoded.append(String.format("\\u%04x", (int) c));
+                    else encoded.append(c);
+                }
+            }
+        }
+        return encoded.append('"').toString();
+    }
+
   private boolean allowed(PatientRecord patient){
     return patient!=null && patient.getContactEmail()!=null &&
       allowed.contains(patient.getContactEmail().strip().toLowerCase(Locale.ROOT));
@@ -54,6 +69,11 @@ public class AppointmentNoticeService {
     if(!allowed(patient)||!genericMailer.isConfigured())return false;
     try{genericMailer.sendPatientNotice(patient.getContactEmail());return true;}
     catch(Exception ignored){return false;}
+  }
+  static boolean isRelayResultUrl(URI location){
+    return "https".equals(location.getScheme()) && "script.googleusercontent.com".equals(location.getHost())
+      && location.getPort()==-1 && location.getUserInfo()==null && location.getRawFragment()==null
+      && "/macros/echo".equals(location.getPath());
   }
   public boolean sendAppointment(DemoAppointment appointment,PatientRecord patient){
     if(!allowed(patient)||from.isBlank())return false;
@@ -74,12 +94,12 @@ public class AppointmentNoticeService {
       String visit=appointment.getVisitType().name();
       String stage=appointment.getStatus().name();
       String subject="PulseOS demo appointment · "+stage.replace("_"," ");
-      String plain="PulseOS fictional appointment\\nAssigned clinician: "+doctor+
-        "\\nAppointment: "+when+"\\nVisit: "+visit+"\\nStatus: "+stage+
-        "\\nCheck in using the attached QR or link: "+url+
-        "\\nSign in as the verified patient to confirm. No real clinical information is included.";
+      String plain="PulseOS fictional appointment\nAssigned clinician: "+doctor+
+        "\nAppointment: "+when+"\nVisit: "+visit+"\nStatus: "+stage+
+        "\nCheck in using the attached QR or link: "+url+
+        "\nSign in as the verified patient to confirm. No real clinical information is included.";
       String html="<html><body style=\"font-family:Arial;padding:22px\">"+
-        "<h1>PulseOS demo appointment</h1><p>Assigned clinician: "+doctor+"</p>"+
+        "<h1>PulseOS demo appointment</h1><p>Assigned clinician: "+org.springframework.web.util.HtmlUtils.htmlEscape(doctor)+"</p>"+
         "<p>Appointment: "+when+"</p><p>Visit: "+visit+"</p><p>Status: "+stage+"</p>"+
         "<p><a href=\""+url+"\">Open appointment check-in</a></p>"+
         "<img src=\"cid:pulseos-qr\" width=\"240\" height=\"240\" alt=\"Check-in QR\"/>"+
@@ -119,6 +139,14 @@ public class AppointmentNoticeService {
           HttpRequest request=HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(45))
             .header("Content-Type","application/json").POST(HttpRequest.BodyPublishers.ofString(payload)).build();
           HttpResponse<String> response=client.send(request,HttpResponse.BodyHandlers.ofString());
+          // Apps Script returns its result through a separate content host.
+          // Follow only that documented HTTPS result URL, with GET and no secret body.
+          if(response.statusCode()==302||response.statusCode()==303){
+            URI location=URI.create(response.headers().firstValue("Location").orElse(""));
+            if(!isRelayResultUrl(location))return false;
+            response=client.send(HttpRequest.newBuilder(location).timeout(Duration.ofSeconds(10))
+              .GET().build(),HttpResponse.BodyHandlers.ofString());
+          }
           if(response.statusCode()!=200||!"OK".equals(response.body().trim()))return false;
         }
         default -> {return false;}

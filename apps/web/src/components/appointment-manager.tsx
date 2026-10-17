@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 type PatientOption = { id: string; fullName: string };
 import styles from "./appointment-manager.module.css";
+import AppointmentDashboard from "./appointment-dashboard";
 import AppointmentCalendar from "./appointment-calendar";
 import AppointmentSlotPicker from "./appointment-slot-picker";
 import {downloadCalendarIcs} from "@/lib/calendar-export";
@@ -25,6 +26,8 @@ const visitNames: Record<VisitType,string> = {
 };
 
 export default function AppointmentManager() {
+  const [loadedAt, setLoadedAt] = useState(0);
+  const [revision, setRevision] = useState(0);
   const [items, setItems] = useState<Appointment[]>([]);
   const [patients, setPatients] = useState<PatientOption[]>([]);
   const [availability, setAvailability] = useState<ClinicianAvailability|null>(null);
@@ -61,6 +64,8 @@ export default function AppointmentManager() {
     }).then(({ result, patientResult, availabilityResult }) => {
       setAvailability(availabilityResult);
       setItems(result);
+      setLoadedAt(Date.now());
+      setRevision(value => value + 1);
       setPatients(patientResult);
       setPatientId(current => patientResult.some(p => p.id === current) ? current : patientResult[0]?.id ?? "");
       setError("");
@@ -70,7 +75,7 @@ export default function AppointmentManager() {
   }, []);
   useEffect(() => { void reload(); }, [reload]);
 
-  const total = useMemo(() => items.filter(item => item.status !== "CANCELLED" && item.status !== "COMPLETED").length, [items]);
+  const total = useMemo(() => items.filter(item => ["SCHEDULED", "CHECKED_IN", "IN_CARE"].includes(item.status) && new Date(item.scheduledAt).getTime() >= loadedAt).length, [items, loadedAt]);
 
   const shown=useMemo(()=>items.filter(item=>{
     if(filter!=="ALL"&&item.status!==filter)return false;
@@ -205,6 +210,7 @@ export default function AppointmentManager() {
 
   return (
     <div className={styles.layout}>
+      <AppointmentDashboard patients={patients} revision={revision}/>
       <section className={styles.formCard}>
         <h2>Schedule a visit</h2>
         <p>Select a record from your account’s patient registry (fictional test data only).</p>
@@ -222,7 +228,7 @@ export default function AppointmentManager() {
           <input id="booking-time" type="datetime-local" value={datetime}
             onChange={event => setDatetime(event.target.value)} required />
           <AppointmentSlotPicker value={datetime} onSelect={setDatetime} visits={items} availability={availability}/>
-          <button type="submit" disabled={saving || patients.length===0}>{saving ? "Saving…" : "Schedule appointment"}</button>
+          <button type="submit" disabled={saving || loading || patients.length===0}>{saving ? "Saving…" : "Schedule appointment"}</button>
         </form>
         {error && <p className={styles.error} role="alert">{error}</p>}
         {success && <p className={styles.success} role="status">{success}</p>}
@@ -290,8 +296,8 @@ export default function AppointmentManager() {
             </li>;
           })}</ul>}
       </section>
-      <ClinicianAvailabilitySettings availability={availability} onSaved={setAvailability}/>
-      <AppointmentReminderHistory/>
+      <ClinicianAvailabilitySettings availability={availability} onSaved={value => { setAvailability(value); setRevision(current => current + 1); }}/>
+      <AppointmentReminderHistory key={revision}/>
     </div>
   );
 }

@@ -40,10 +40,10 @@ Clinicians can record an in-app demo notification under the selected patient's *
 
 Staff can open `/messages` and chat with other enabled, registered staff members. Admins appear as **Supervisor / Admin**; clinicians appear as **Clinician / Doctor**. Inbox messages refresh every 15 seconds, and staff can mark their received messages as read. This is a near-real-time **internal demo messenger**, not a clinical messaging service. Messages are stored in PostgreSQL and visible only to sender and recipient. The backend enforces current account enabled status and recipient availability.
 
-There is no patient assignment or on-call roster yet, so the recipient is selected from the staff directory. Do not use this chat for real-time escalation, emergency communications, real patient details, or regulated data.
+Care-team message shortcuts select a registered recipient from the staff directory; they do not provide an on-call roster. Do not use this chat for real-time escalation, emergency communications, real patient details, or regulated data.
 
 ## Operational limitations
 
 - External delivery remains a best-effort provider operation, not mailbox existence verification.
 - New email controls must not be enabled outside approved test mailboxes.
-- The system is not HIPAA compliant and does not provide end-to-end encryption, real-time guarantees, consent management, retention controls, production abuse prevention, or a patient-facing app.
+- The system is not HIPAA compliant and does not provide end-to-end encryption, real-time guarantees, consent management, retention controls, production abuse prevention, or a certified patient-facing clinical service.

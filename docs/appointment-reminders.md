@@ -49,3 +49,5 @@ The API needs a **continuously running** process for best-effort scheduled
 delivery. Free services that idle or scale to zero can miss the reminder window.
 A saved configuration does not mean the scheduling job executed, and this is
 not a guaranteed delivery service. Use fictional test records only.
+
+The [operations dashboard](appointment-dashboard.md) also shows all automatic attempt outcomes from the last 24 hours; these aggregate counts are not limited to the latest 50 history records.

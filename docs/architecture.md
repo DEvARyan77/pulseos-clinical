@@ -1,21 +1,48 @@
 # Architecture
 
-```text
-Browser → Next.js app (public)
-             │ server-side API calls
-             ▼
-           Spring Boot API → PostgreSQL
-```
+Browser → Next.js web server → Spring Boot API → PostgreSQL
 
-## Session flow (when explicitly enabled)
-1. User submits credentials from `/login` to the **Next.js route handler** at `POST /api/auth/login`.
-2. Next.js calls `POST /api/v1/auth/login` on the Spring Boot service without exposing backend credentials to client-side JS.
-3. Spring Security validates the explicit BCrypt staff password hash and issues an HS256 JWT for 15 minutes.
-4. Next.js stores the token in an HttpOnly, Secure cookie. It is not written to local storage.
-5. Every server render of `/` verifies the JWT via `GET /api/v1/auth/me`. Invalid or missing sessions redirect to `/login`.
-6. `POST /api/auth/logout` clears the browser cookie.
+This is a fictional portfolio/demo application, not a certified EHR. Only synthetic
+records may be entered, and successful checks do not establish compliance readiness.
 
-No API endpoints for actual patient data exist yet. All clinical panels show hardcoded synthetic examples. A single account is provisioned through environment configuration for an instructional demonstration; this is not a multi-user identity system.
+## Identity and session boundaries
 
-## Operations and trust boundaries
-The API is designed to accept bearer authorization, not browser auth cookies. Production environments should restrict API access to trusted networking where available, use TLS, add login throttling, audit trails, a real identity provider, and least-privilege DB credentials before introducing persistent clinical information.
+Next.js route handlers exchange credentials with the API and store the short-lived
+JWT in an HttpOnly, Secure, SameSite=Lax cookie in production. Browser JavaScript
+does not receive the bearer token. Server requests use `API_INTERNAL_URL` and
+no-store caching. State-changing cookie gateways check request origins.
+
+Persisted accounts support CLINICIAN, ADMIN and PATIENT roles. The backend checks
+current database roles and enabled state for clinician and administrator actions,
+so stale JWT claims cannot retain revoked privileges. Public registration never
+creates administrators. Patient portal access checks the current enabled patient
+account and its verified email against fictional registry contacts.
+
+Clinicians own their registry, notes, appointments and reminder history.
+Administrators manage staff but do not automatically gain access to patient or
+appointment APIs. Shared care-team features use explicit assignments.
+
+## Scheduling and reminders
+
+PostgreSQL stores appointment state and clinician availability. A per-clinician
+transactional advisory lock serializes booking conflict checks. Optimistic versions
+protect concurrent appointment and availability changes; conflicting writes return
+a safe 409 response. Thirty-minute slots respect configured working hours, breaks,
+blocked dates and time zones. Unconfigured availability retains legacy unrestricted
+scheduling.
+
+The [appointment dashboard](appointment-dashboard.md) uses owner-scoped calendar-day
+queries and aggregate reminder counts. Missed check-ins are display flags rather
+than persisted status changes.
+
+Automatic reminders are opt-in. PostgreSQL claims prevent duplicate attempts for an
+appointment/time pair across replicas. Only allowlisted test recipients are eligible.
+Neither provider acceptance nor stored configuration proves inbox delivery. Unknown
+attempts are not retried automatically.
+
+## Operations
+
+Flyway owns schema changes; Hibernate validates the schema. The API uses bearer
+authorization and does not accept browser auth cookies. Compose publishes only the
+frontend on loopback and runs both application containers without root privileges.
+See [deployment checks and limits](operations.md) and [authentication](authentication.md).

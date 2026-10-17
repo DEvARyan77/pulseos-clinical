@@ -17,6 +17,7 @@ Next.js 16, Spring Boot 4.1, PostgreSQL, JWT authentication, patient records, ap
 - Clinician and verified patient appointment calendars with private `.ics` downloads (whole displayed schedule, selected day, or one visit). Imports are manual snapshots, not automatic Google/Outlook sync; export again after a change.
 - Per-clinician PostgreSQL availability with selected IANA time zone, working days, opening hours, optional daily break and up to 90 blocked dates. Once configured, the API rejects new and rescheduled visits outside these windows. Existing bookings remain unchanged; until configured, legacy unrestricted scheduling remains available.
 - Opt-in automatic QR appointment reminders, evaluated every five minutes during the 1–24 hour pre-visit window, with provider-result history for clinicians and duplicate prevention across replicas. Requires a continuously running API and approved test mailboxes; see [reminder setup](docs/appointment-reminders.md).
+- Clinician-owned [appointment operations dashboard](docs/appointment-dashboard.md): today’s visits, pending and missed check-ins, and complete 24-hour automatic reminder counts in the configured time zone.
 - Logout and HttpOnly, short-lived JWT session cookie
 
 ## Email delivery configuration
@@ -99,3 +100,8 @@ See [Patient communications and safety](docs/patient-communications.md). Never e
 ## Security limitations
 
 Email verification checks mailbox access, **not professional licensure or authorization to access real patient information**. There is no MFA, login throttling, complete revocable-session system, medically compliant hosting, or clinical audit certification. Never store protected health information in this portfolio deployment.
+
+
+## Verification and deployment
+
+See [repeatable checks, operator configuration and known limits](docs/operations.md). CI success does not verify a live deployment or clinical/compliance readiness.

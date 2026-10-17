@@ -156,7 +156,7 @@ export default function AdminDashboard({ username }: { username: string }) {
             {loading && <p className={styles.empty}>Loading staff accounts…</p>}
             {!loading && filtered.length === 0 && <p className={styles.empty}>No matching staff accounts.</p>}
           </div>
-          <p className={styles.note}>Changes are enforced by the API. Staff members should sign in again after role changes. Existing JWTs expire within 15 minutes; do not use this portfolio for real patient information.</p>
+          <p className={styles.note}>Changes are enforced by the API. Staff members should sign in again after role changes. Existing JWTs expire within eight hours; do not use this portfolio for real patient information.</p>
         </section>
 
         <section className={styles.panel} aria-label="Fictional patient directory" style={{marginTop:24}}>

@@ -21,7 +21,7 @@ export default async function AppointmentsPage() {
       {enabled ? <StaffNavbar role="CLINICIAN" active="appointments" /> : <header className={styles.header}><Link href="/">← Patient workspace</Link><ThemeSwitcher /></header>}
       <div className={styles.content}>
         <p className={styles.overline}>PULSEOS · DEMO OPERATIONS</p>
-        <h1>Appointment scheduling</h1>
+        <h1>Appointment operations</h1>
         <p className={styles.subtitle}>Schedule and reschedule with working hours, breaks and blocked dates. Each visit lasts 30 minutes; clinician rules use their chosen time zone.</p>
         {enabled ? <AppointmentManager/> : (
           <div className={styles.disabled}>

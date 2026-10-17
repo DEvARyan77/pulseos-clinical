@@ -13,6 +13,9 @@ public interface DemoAppointmentRepository extends JpaRepository<DemoAppointment
     List<DemoAppointment> findByPatientIdOrderByScheduledAtAsc(String patientId);
     Optional<DemoAppointment> findByIdAndCreatedBy(UUID id, String createdBy);
 
+    List<DemoAppointment> findByCreatedByAndScheduledAtGreaterThanEqualAndScheduledAtLessThanOrderByScheduledAtAsc(
+        String createdBy, Instant start, Instant end);
+
     // Serialize writes to the same clinician's calendar within a database transaction.
     // Prevent simultaneous create/reschedule requests from bypassing conflict checks.
     // Cast the void-returning PostgreSQL lock function to a boolean expression

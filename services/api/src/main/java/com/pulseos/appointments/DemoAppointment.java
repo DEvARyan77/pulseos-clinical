@@ -16,7 +16,7 @@ public class DemoAppointment {
     @Column(name = "created_by", nullable = false, length = 80)
     private String createdBy;
 
-    @Column(name = "patient_id", nullable = false, length = 32)
+    @Column(name = "patient_id", nullable = false, length = 64)
     private String patientId;
 
     @Column(name = "scheduled_at", nullable = false)

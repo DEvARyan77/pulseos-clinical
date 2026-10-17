@@ -1,0 +1,13 @@
+.panel{grid-column:1/-1;border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:25px;min-width:0}
+.heading{display:flex;justify-content:space-between;gap:16px;align-items:start}.heading h2{font-size:20px}
+.panel p{color:var(--muted);font-size:12px;line-height:1.6;margin:8px 0}
+.panel button{border:1px solid var(--line);border-radius:8px;background:var(--soft);color:var(--text);padding:10px 14px;min-height:44px;cursor:pointer}
+.panel button:disabled{opacity:.55;cursor:wait}
+.metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:20px 0}
+.metrics>div{padding:16px;background:var(--soft);border:1px solid var(--line);border-radius:10px}
+.metrics dt{font-size:12px;color:var(--muted)}.metrics dd{font-size:30px;font-weight:700;margin:8px 0 0;color:var(--accent-text)}
+.reminders{display:flex;flex-wrap:wrap;gap:12px 24px;margin:14px 0}.reminders>div{display:flex;gap:8px;font-size:12px}.reminders dt{color:var(--muted)}.reminders dd{margin:0;font-weight:700}
+.scroll{overflow-x:auto}.table{border-collapse:collapse;width:100%;font-size:12px;text-align:left;margin-top:12px}
+.table th,.table td{padding:12px 10px;border-bottom:1px solid var(--line);white-space:nowrap}.table th{color:var(--muted)}
+.error{color:#d06870!important}.panel h3{font-size:15px;margin-top:20px}
+@media(max-width:580px){.panel{padding:18px}.metrics{grid-template-columns:1fr}.heading{flex-wrap:wrap}}
